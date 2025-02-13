@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "spotify-charts-analysis"
+version = "0.1.0"
+description = ""
+authors = ["Sophie Harren <sharren@stud.hs-bremen.de>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.8"
+uvicorn = "^0.34.0"
+pydantic = "^2.10.6"
+pydantic-settings = "^2.7.1"
+sqlalchemy = "^2.0.38"
+sqlmodel = "^0.0.22"
+geoalchemy2 = "^0.17.0"
+psycopg2-binary = "^2.9.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

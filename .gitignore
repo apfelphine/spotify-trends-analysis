@@ -1,0 +1,28 @@
+# Python cache and compiled files
+__pycache__/
+
+# Virtual environments
+# Poetry typically uses .venv, but exclude other common venv directories as well
+.venv/
+env/
+venv/
+ENV/
+*.venv/
+
+# Distribution / packaging
+build/
+dist/
+
+# Poetry specific
+.poetry_cache/
+
+# PyCharm specific
+.idea/
+*.iml
+
+# Logs and environment variables
+*.env
+.env.*
+
+# Frontend
+node_modules

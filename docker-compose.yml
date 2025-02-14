@@ -3,7 +3,7 @@ services:
   db:
     image: postgis/postgis
     environment:
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: spotify-data
     ports:
       - "5432:5432"
@@ -12,6 +12,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@postgres.de
+      PGADMIN_DEFAULT_PASSWORD: postgres
 
   app:
     build: .
@@ -25,10 +33,10 @@ services:
       POSTGRES__HOST: db
       POSTGRES__PORT: 5432
       POSTGRES__USER: postgres
-      POSTGRES__PASSWORD: password
+      POSTGRES__PASSWORD: postgres
       POSTGRES__DATABASE_NAME: spotify-data
     ports:
       - "8080:8080"
     volumes:
-      - .:/app  # Mounts your code inside the container
+      - .:/app
     command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload" ]

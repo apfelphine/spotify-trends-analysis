@@ -3,6 +3,7 @@ from sqlmodel import SQLModel, create_engine
 import logging
 
 from app.models.configuration import configuration
+from app.models.tracks import Track # noqa
 
 logger = logging.getLogger(__name__)
 

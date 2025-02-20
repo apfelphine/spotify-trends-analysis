@@ -26,3 +26,6 @@ dist/
 
 # Frontend
 node_modules
+
+# Postgres Volume
+data/

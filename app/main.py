@@ -1,14 +1,18 @@
+import datetime
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.api import root
-
-from app.controllers import postgis_controller # noqa
+from app.database import create_db_and_tables
+from app.kaggle_import import import_songs_from_kaggle
 
 app = FastAPI(
     title="Global Spotify Charts API",
-    description="Project for class \"Geoinformationssysteme\" at City University of Applied Science Bremen "
+    description="Project for class \"Geoinformationssysteme\" "
+                "at City University of Applied Science Bremen "
                 "- Winter Semester 2024/25",
     root_path="/api",
     docs_url="/docs",
@@ -26,6 +30,17 @@ app.add_middleware(
 app.include_router(root.router)
 
 app.mount("", StaticFiles(directory="static", html=True), name="static")
+
+create_db_and_tables()
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+scheduler.add_job(
+    import_songs_from_kaggle,
+    'cron', hour=1,  # Run import script every night at 1am for daily delta load
+    next_run_time=datetime.datetime.now()  # Run script immediately upon start
+)
 
 if __name__ == "__main__":
     import uvicorn

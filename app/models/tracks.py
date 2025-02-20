@@ -2,24 +2,26 @@ import datetime
 from typing import List
 
 from sqlalchemy import Column, JSON
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 
 
-# class AudioFeatures(SQLModel):
-#     danceability: float
-#     energy: float
-#     key: int
-#     loudness: float
-#     speechiness: float
-#     acousticness: float
-#     instrumentalness: float
-#     valence: float
-#     tempo: float
-#     liveness: float
-#     mode: int
+class AudioFeatures(SQLModel):
+    danceability: float
+    energy: float
+    key: int
+    loudness: float
+    speechiness: float
+    acousticness: float
+    instrumentalness: float
+    valence: float
+    tempo: float
+    liveness: float
+    mode: int
 
 
-class Track(SQLModel, table=True):
+class Track(AudioFeatures, table=True):
+    __tablename__ = "tracks"
+
     id: str = Field(primary_key=True)
     name: str
     artists: List[str] = Field(sa_column=Column(JSON))  # todo: use spotify web api to get artist details for track id
@@ -31,7 +33,7 @@ class Track(SQLModel, table=True):
     duration_ms: int
     popularity: int
 
-    # audio_features: AudioFeatures
+    trend_entries: list["TrendEntry"] = Relationship(back_populates="track", cascade_delete=True)
 
     class Config:
         arbitrary_types_allowed = True  # Needed for Column(JSON)

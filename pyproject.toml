@@ -15,6 +15,10 @@ sqlalchemy = "^2.0.38"
 sqlmodel = "^0.0.22"
 geoalchemy2 = "^0.17.0"
 psycopg2-binary = "^2.9.10"
+kagglehub = "^0.3.9"
+pandas = "^2.2.3"
+python-multipart = "^0.0.20"
+apscheduler = "^3.11.0"
 
 
 [build-system]

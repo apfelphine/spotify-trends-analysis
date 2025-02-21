@@ -1,9 +1,13 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from sqlalchemy import Column, JSON
 from sqlmodel import Field, SQLModel, Relationship
 
 from app.models.links import AlbumArtistLink, TrackArtistLink
+
+if TYPE_CHECKING:
+    from app.models.albums import Album
+    from app.models.tracks import Track
 
 
 class Artist(SQLModel, table=True):

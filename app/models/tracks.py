@@ -1,10 +1,13 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.albums import Album
 from app.models.artists import Artist
 from app.models.links import TrackArtistLink
+
+if TYPE_CHECKING:
+    from app.models.trends import TrendEntry
 
 
 class Track(SQLModel, table=True):

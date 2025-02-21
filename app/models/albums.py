@@ -1,9 +1,13 @@
 import enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.links import AlbumArtistLink
+
+if TYPE_CHECKING:
+    from app.models.artists import Artist
+    from app.models.tracks import Track
 
 
 class AlbumType(str, enum.Enum):

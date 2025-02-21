@@ -6,7 +6,7 @@ from starlette.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 from asyncio import run
 
-from app.api import root
+from app.api import root, data_import
 from app.database import create_db_and_tables
 from app.kaggle_import import import_songs_from_kaggle
 
@@ -29,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(root.router)
+app.include_router(data.router)
 
 app.mount("", StaticFiles(directory="static", html=True), name="static")
 

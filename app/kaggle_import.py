@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import math
 import re
 import time
 from typing import Callable, Awaitable
@@ -10,8 +9,9 @@ import kagglehub
 import pandas as pd
 import requests
 from playwright.async_api import async_playwright
+from sqlalchemy import func
 
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import Session, select, SQLModel, Field
 
 from app.database import engine
 from app.models.albums import Album
@@ -20,14 +20,16 @@ from app.models.tracks import Track
 from app.models.trends import TrendEntry
 
 
-class DataImport(SQLModel, table=True):
-    id: int = Field(default=1, primary_key=True)
-    max_imported_date: datetime.datetime
-
-
 async def import_songs_from_kaggle():
     path = kagglehub.dataset_download("asaniczka/top-spotify-songs-in-73-countries-daily-updated")
     await load_songs_from_csv(path + '/universal_top_spotify_songs.csv')
+
+
+async def get_min_max_date():
+    with Session(engine) as session:
+        from_date = session.exec(select(func.min(TrendEntry.date))).first()
+        to_date = session.exec(select(func.max(TrendEntry.date))).first()
+        return {"from": from_date, "to": to_date}
 
 
 async def load_songs_from_csv(path: str):
@@ -38,14 +40,14 @@ async def load_songs_from_csv(path: str):
     # Drop global entries (country is part of the primary key and must be given!)
     df.dropna(subset=['country'], inplace=True)
 
-    with Session(engine) as session:
-        last_import = session.get(DataImport, 1)
-        if last_import is not None:
-            df = df.loc[(df['snapshot_date'] > last_import.max_imported_date)]  # Delta-load
+    # Delta-load
+    max_date = (await get_min_max_date()).get("to", None)
+    if max_date is not None:
+        df = df.loc[(df['snapshot_date'] > max_date)]
 
-        if len(df) == 0:
-            print("No new trend entries found...")
-            return
+    if len(df) == 0:
+        print("No new data found. Skipping import...")
+        return None, None
 
     date = df["snapshot_date"].min()
     while date <= df["snapshot_date"].max():
@@ -57,6 +59,7 @@ async def load_songs_from_csv(path: str):
         date = next_date
 
     print("Finished.")
+    return df["snapshot_date"].min(), df["snapshot_date"].max()
 
 
 async def load_dataframe(df: pd.DataFrame):
@@ -84,16 +87,6 @@ async def load_dataframe(df: pd.DataFrame):
                     )
                 )
                 keys.add(key)
-
-        last_import = session.get(DataImport, 1)
-        if last_import is not None:
-            last_import.max_imported_date = df["snapshot_date"].max()
-        else:
-            session.add(
-                DataImport(
-                    max_imported_date=df["snapshot_date"].max(),
-                )
-            )
 
         session.commit()
 

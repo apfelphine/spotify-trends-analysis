@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
+from asyncio import run
 
 from app.api import root
 from app.database import create_db_and_tables
@@ -37,7 +38,7 @@ scheduler = BackgroundScheduler()
 scheduler.start()
 
 scheduler.add_job(
-    import_songs_from_kaggle,
+    lambda: run(import_songs_from_kaggle()),
     'cron', hour=1,  # Run import script every night at 1am for daily delta load
     next_run_time=datetime.datetime.now()  # Run script immediately upon start
 )

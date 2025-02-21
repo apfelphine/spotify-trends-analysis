@@ -12,6 +12,9 @@ COPY pyproject.toml poetry.lock* /app/
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root
 
+# Install playwright
+RUN playwright install-deps && playwright install
+
 COPY . /app
 
 EXPOSE 8080

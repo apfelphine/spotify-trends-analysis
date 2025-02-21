@@ -1,11 +1,23 @@
-import datetime
-from typing import List
+from typing import Optional
 
-from sqlalchemy import Column, JSON
 from sqlmodel import SQLModel, Field, Relationship
 
+from app.models.albums import Album
+from app.models.artists import Artist
+from app.models.links import TrackArtistLink
 
-class AudioFeatures(SQLModel):
+
+class Track(SQLModel, table=True):
+    __tablename__ = "tracks"
+
+    id: str = Field(primary_key=True)
+    name: str
+    preview_url: Optional[str]
+    spotify_url: str
+
+    # Metadata
+    explicit: bool
+    duration_ms: int
     danceability: float
     energy: float
     key: int
@@ -17,23 +29,11 @@ class AudioFeatures(SQLModel):
     tempo: float
     liveness: float
     mode: int
+    time_signature: int
 
-
-class Track(AudioFeatures, table=True):
-    __tablename__ = "tracks"
-
-    id: str = Field(primary_key=True)
-    name: str
-    artists: List[str] = Field(sa_column=Column(JSON))  # todo: use spotify web api to get artist details for track id
-    album_name: str  # todo: use spotify web api to get album details for track id
-    album_release_date: datetime.datetime  # todo: use spotify web api to get album details for track id
-
-    # Metadata
-    explicit: bool
-    duration_ms: int
-    popularity: int
-
+    # Foreign keys / relations
+    album_id: str = Field(foreign_key="albums.id")
+    album: Album = Relationship(back_populates="tracks")
+    artists: list[Artist] = Relationship(back_populates="tracks", link_model=TrackArtistLink)
     trend_entries: list["TrendEntry"] = Relationship(back_populates="track", cascade_delete=True)
 
-    class Config:
-        arbitrary_types_allowed = True  # Needed for Column(JSON)

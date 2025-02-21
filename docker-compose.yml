@@ -42,5 +42,6 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./static:/app/static
     command: [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload" ]

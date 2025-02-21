@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(root.router)
-app.include_router(data.router)
+app.include_router(data_import.router)
 
 app.mount("", StaticFiles(directory="static", html=True), name="static")
 

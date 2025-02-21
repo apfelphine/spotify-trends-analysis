@@ -4,6 +4,7 @@ import logging
 import math
 import re
 import time
+from typing import Callable, Awaitable
 
 import kagglehub
 import pandas as pd
@@ -22,52 +23,48 @@ from app.models.trends import TrendEntry
 class DataImport(SQLModel, table=True):
     id: int = Field(default=1, primary_key=True)
     max_imported_date: datetime.datetime
-    last_imported_version: str = Field(default="")
 
 
 async def import_songs_from_kaggle():
-    # return
     path = kagglehub.dataset_download("asaniczka/top-spotify-songs-in-73-countries-daily-updated")
-    current_version = path.split("/")[-1]
-
-    with Session(engine) as session:
-        last_import = session.get(DataImport, 1)
-
-        if last_import is not None and last_import.last_imported_version == current_version:
-            print(f"Already imported version {current_version}. Skipping import...")
-            return
-
-    await load_songs_from_csv(path + '/universal_top_spotify_songs.csv', current_version)
+    await load_songs_from_csv(path + '/universal_top_spotify_songs.csv')
 
 
-async def load_songs_from_csv(path: str, version: str) -> int:
+async def load_songs_from_csv(path: str):
     df = pd.read_csv(
         path,
         parse_dates=['snapshot_date', 'album_release_date']
     )
+    # Drop global entries (country is part of the primary key and must be given!)
+    df.dropna(subset=['country'], inplace=True)
 
     with Session(engine) as session:
         last_import = session.get(DataImport, 1)
         if last_import is not None:
             df = df.loc[(df['snapshot_date'] > last_import.max_imported_date)]  # Delta-load
 
-        # Drop global entries (country is part of the primary key and must be given!)
-        df.dropna(subset=['country'], inplace=True)
-
-        total_entries = len(df)
-        if total_entries == 0:
+        if len(df) == 0:
             print("No new trend entries found...")
-            return 0
+            return
 
-        await ensure_tracks_exist(df["spotify_id"].unique())
-        new_trend_entry_count = 0
-        steps = math.ceil(total_entries / 10)
+    date = df["snapshot_date"].min()
+    while date <= df["snapshot_date"].max():
+        next_date = date + datetime.timedelta(days=1)
+        temp_df = df.loc[(df['snapshot_date'] < next_date)]
+        temp_df = temp_df.loc[(temp_df['snapshot_date'] >= date)]
+        print(f"Loading trends for {date} ({len(temp_df)} entries)...")
+        await load_dataframe(temp_df)
+        date = next_date
 
-        print(
-            f"Importing {total_entries} trend entries... "
-            f"{new_trend_entry_count}/{total_entries} "
-            f"({new_trend_entry_count / total_entries * 100:.0f}%)"
-        )
+    print("Finished.")
+
+
+async def load_dataframe(df: pd.DataFrame):
+    if len(df) == 0:
+        return
+
+    with Session(engine) as session:
+        await ensure_tracks_exist(df["spotify_id"].unique(), session)
 
         existing_track_ids: list[str] = list(session.exec(select(Track.id).distinct()).all())
         keys = set()
@@ -87,30 +84,18 @@ async def load_songs_from_csv(path: str, version: str) -> int:
                     )
                 )
                 keys.add(key)
-                new_trend_entry_count += 1
 
-            if new_trend_entry_count % steps == 0:
-                print(
-                    f"Importing {total_entries} trend entries... "
-                    f"{new_trend_entry_count}/{total_entries} "
-                    f"({new_trend_entry_count / total_entries * 100:.0f}%)"
-                )
-
+        last_import = session.get(DataImport, 1)
         if last_import is not None:
-            last_import.last_imported_version = version
             last_import.max_imported_date = df["snapshot_date"].max()
         else:
             session.add(
                 DataImport(
                     max_imported_date=df["snapshot_date"].max(),
-                    last_imported_version=version,
                 )
             )
 
         session.commit()
-
-    print("Finished.")
-    return new_trend_entry_count
 
 
 async def get_access_token() -> str:
@@ -132,145 +117,107 @@ async def get_access_token() -> str:
         return auth_token.replace("Bearer", "").strip()
 
 
-async def ensure_tracks_exist(track_ids: list[str]):
+async def ensure_tracks_exist(track_ids: list[str], session: Session):
     access_token = await get_access_token()
 
-    with Session(engine) as session:
-        print(f"Ensuring all {len(track_ids)} unique tracks are added to database...")
-        existing_track_ids: list[str] = list(session.exec(select(Track.id).distinct()).all())
-        existing_artist_ids: list[str] = list(session.exec(select(Artist.id).distinct()).all())
-        existing_album_ids: list[str] = list(session.exec(select(Album.id).distinct()).all())
+    existing_track_ids: list[str] = list(session.exec(select(Track.id).distinct()).all())
+    new_track_ids = [track_id for track_id in track_ids if track_id not in existing_track_ids]
+    if len(new_track_ids) == 0:
+        return
 
-        new_track_ids = [track_id for track_id in track_ids if track_id not in existing_track_ids]
-        print(f"Resolving {len(new_track_ids)} new tracks...")
+    resolved_new_tracks = await batch_spotify_request(
+        new_track_ids, get_tracks_from_spotify, 100, access_token
+    )
 
-        track_futures = []
-        feature_futures = []
-        for i in range(0, len(new_track_ids), 100):
-            track_futures.append(get_tracks_from_spotify(new_track_ids[i:i + 100], access_token))
-            feature_futures.append(get_audio_features_from_spotify(new_track_ids[i:i + 100], access_token))
+    resolved_audio_features = {feat["id"]: feat for feat in await batch_spotify_request(
+        new_track_ids, get_audio_features_from_spotify, 100, access_token
+    )}
 
-        resolved_new_tracks = [track for response in (await asyncio.gather(*track_futures)) for track in response if
-                               track is not None]
-        # assert len(new_track_ids) == len(resolved_new_tracks)
-        print(f"Successfully retrieved {len(resolved_new_tracks)} tracks...")
+    existing_album_ids: list[str] = list(session.exec(select(Album.id).distinct()).all())
+    new_albums = list(
+        {t["album"]["id"]: t["album"] for t in resolved_new_tracks if t["album"]["id"] not in existing_album_ids}
+        .values()
+    )
 
-        resolved_audio_features = {feat["id"]: feat for response in (await asyncio.gather(*feature_futures)) for feat in
-                                   response if feat is not None}
-        # assert len(new_track_ids) == len(resolved_audio_features)
-        print(f"Successfully retrieved audio features for {len(resolved_audio_features)} tracks...")
+    existing_artist_ids: list[str] = list(session.exec(select(Artist.id).distinct()).all())
+    new_artists_album_ids = {artist['id'] for album in new_albums for artist in album["artists"] if
+                             artist['id'] not in existing_artist_ids}
+    resolved_album_artists = await batch_spotify_request(
+        list(new_artists_album_ids), get_artists_from_spotify, 10, access_token
+    )
 
-        new_albums = [t["album"] for t in resolved_new_tracks if t["album"]["id"] not in existing_album_ids]
-        print(f"There are {len({album['id'] for album in new_albums})} new albums...")
+    add_artists_to_session(resolved_album_artists, session)
+    add_albums_to_session(new_albums, session)
 
-        new_artists_album_ids = {artist['id'] for album in new_albums for artist in album["artists"] if artist['id'] not in existing_artist_ids}
-        print(f"There are {len(new_artists_album_ids)} new artists in the albums...")
-        print(f"Resolving {len(new_artists_album_ids)} new artists...")
-        album_artist_futures = []
-        for i in range(0, len(new_artists_album_ids), 10):
-            album_artist_futures.append(get_artists_from_spotify(list(new_artists_album_ids)[i:i + 10], access_token))
+    new_track_artists_ids = {
+        artist['id'] for t in resolved_new_tracks for artist in t["artists"]
+        if artist["id"] not in existing_artist_ids and artist["id"] not in new_artists_album_ids
+    }
+    resolved_track_artists = await batch_spotify_request(
+        list(new_track_artists_ids), get_artists_from_spotify, 10, access_token
+    )
 
-        resolved_album_artists = [artist for response in (await asyncio.gather(*album_artist_futures)) for artist in
-                                  response if artist is not None]
-        assert len(new_artists_album_ids) == len(resolved_album_artists)
-        print(f"Successfully retrieved {len(resolved_album_artists)} artists...")
+    add_artists_to_session(resolved_track_artists, session)
+    add_tracks_to_session(resolved_new_tracks, resolved_audio_features, session)
 
-        for artist in resolved_album_artists:
-            session.add(
-                Artist(
-                    image_url=artist["images"][0]["url"] if len(artist["images"]) > 0 else None,
-                    spotify_url=artist["external_urls"]["spotify"],
-                    **artist
-                )
+
+def add_tracks_to_session(tracks: list[dict], audio_features_dict: dict, session: Session):
+    for track in tracks:
+        artists = track.pop('artists', [])
+        album = track.pop('album', {})
+
+        audio_features = audio_features_dict.get(track["id"])
+        del audio_features["id"]
+        del audio_features["type"]
+        del audio_features["uri"]
+        del track["duration_ms"]
+
+        session.add(
+            Track(
+                album_id=album["id"],
+                spotify_url=track["external_urls"]["spotify"],
+                artists=[session.get(Artist, artist["id"]) for artist in artists],
+                **track,
+                **audio_features
             )
-        print(f"Successfully added {len(resolved_album_artists)} artists to db...")
-        session.commit()
+        )
 
-    with Session(engine) as session:
-        added = set()
-        for album in new_albums:
-            if album["id"] in added:
-                continue
 
-            artists = album.pop('artists', [])
-            session.add(
-                Album(
-                    image_url=album["images"][0]["url"] if len(album["images"]) > 0 else None,
-                    spotify_url=album["external_urls"]["spotify"],
-                    artists=[session.get(Artist, artist["id"]) for artist in artists],
-                    **album
-                )
+def add_artists_to_session(artists: list[dict], session: Session):
+    for artist in artists:
+        session.add(
+            Artist(
+                image_url=artist["images"][0]["url"] if len(artist["images"]) > 0 else None,
+                spotify_url=artist["external_urls"]["spotify"],
+                **artist
             )
-            added.add(album["id"])
-            # for artist in artists:
-            #     session.add(
-            #         AlbumArtistLink(
-            #             artist_id=artist["id"],
-            #             album_id=album["id"],
-            #         )
-            #     )
-        print(f"Successfully added {len(added)} albums to db...")
-        session.commit()
+        )
 
-        new_track_artists_ids = {
-            artist['id'] for t in resolved_new_tracks for artist in t["artists"]
-            if artist["id"] not in existing_artist_ids and artist["id"] not in new_artists_album_ids
-        }
-        print(f"There are {len(new_track_artists_ids)} new artists in the tracks...")
-        print(f"Resolving {len(new_track_artists_ids)} new artists...")
-        track_artist_futures = []
-        for i in range(0, len(new_track_artists_ids), 10):
-            track_artist_futures.append(get_artists_from_spotify(list(new_track_artists_ids)[i:i + 10], access_token))
 
-        resolved_track_artists = [
-            artist for response in (await asyncio.gather(*track_artist_futures)) for artist in response if
-            artist is not None
-        ]
-        assert len(new_track_artists_ids) == len(resolved_track_artists)
-        print(f"Successfully retrieved {len(resolved_track_artists)} artists...")
-
-    with Session(engine) as session:
-        for artist in resolved_track_artists:
-            session.add(
-                Artist(
-                    image_url=artist["images"][0]["url"] if len(artist["images"]) > 0 else None,
-                    spotify_url=artist["external_urls"]["spotify"],
-                    **artist
-                )
+def add_albums_to_session(albums: list[dict], session: Session):
+    for album in albums:
+        artists = album.pop('artists', [])
+        session.add(
+            Album(
+                image_url=album["images"][0]["url"] if len(album["images"]) > 0 else None,
+                spotify_url=album["external_urls"]["spotify"],
+                artists=[session.get(Artist, artist["id"]) for artist in artists],
+                **album
             )
-        print(f"Successfully added {len(resolved_track_artists)} artists to db...")
-        session.commit()
+        )
 
-    with Session(engine) as session:
-        for track in resolved_new_tracks:
-            artists = track.pop('artists', [])
-            album = track.pop('album', None)
 
-            audio_features = resolved_audio_features.get(track["id"])
-            del audio_features["id"]
-            del audio_features["type"]
-            del audio_features["uri"]
-            del track["duration_ms"]
+async def batch_spotify_request(
+    ids: list[str], func: Callable[[list[str], str], Awaitable[list[dict]]], batch_size: int, access_token: str
+):
+    futures = []
+    for i in range(0, len(ids), batch_size):
+        futures.append(func(list(ids)[i:i + batch_size], access_token))
 
-            session.add(
-                Track(
-                    album_id=album["id"],
-                    spotify_url=track["external_urls"]["spotify"],
-                    artists=[session.get(Artist, artist["id"]) for artist in artists],
-                    **track,
-                    **audio_features
-                )
-            )
-            # for artist in artists:
-            #     session.add(
-            #         TrackArtistLink(
-            #             artist_id=artist["id"],
-            #             track_id=track["id"],
-            #         )
-            #     )
-
-        print(f"Successfully added {len(resolved_new_tracks)} tracks to db...")
-        session.commit()
+    return [
+        r for response in (await asyncio.gather(*futures))
+        for r in response if r is not None
+    ]
 
 
 async def get_tracks_from_spotify(track_ids: list[str], access_token: str) -> list[dict]:

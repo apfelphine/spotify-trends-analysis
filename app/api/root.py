@@ -31,8 +31,7 @@ async def import_data(file: UploadFile, version: Optional[str] = None):
     finally:
         file.file.close()
 
-    new_trend_entries = await load_songs_from_csv("/tmp/" + file.filename, version)
+    await load_songs_from_csv("/tmp/" + file.filename)
     os.remove("/tmp/" + file.filename)
 
-    return (f"Successfully added {new_trend_entries} "
-            f"new entries to the database")
+    return (f"Successfully added new entries to the database")

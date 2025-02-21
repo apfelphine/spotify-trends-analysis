@@ -8,7 +8,7 @@ from asyncio import run
 
 from app.api import root, data_import
 from app.database import create_db_and_tables
-from app.kaggle_import import import_songs_from_kaggle
+from app.business.data_import import import_songs_from_kaggle
 
 app = FastAPI(
     title="Global Spotify Charts API",

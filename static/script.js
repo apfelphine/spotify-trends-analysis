@@ -34,3 +34,24 @@ function onMapClick(e) {
 }
 
 map.on('click', onMapClick);
+
+function fetchJSON(url) {
+  return fetch(url)
+    .then(function(response) {
+      return response.json();
+    });
+}
+
+fetchJSON('world-administrative-boundaries.geojson')
+            .then(function(data) {
+          L.geoJSON(data, {
+    // style: function(feature) {
+    //     switch (feature.properties.party) {
+    //         case 'Republican': return {color: "#ff0000"};
+    //         case 'Democrat':   return {color: "#0000ff"};
+    //     }
+    // }
+}).addTo(map);
+});
+
+

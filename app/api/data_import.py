@@ -2,7 +2,7 @@ import os
 
 from fastapi import APIRouter, UploadFile, HTTPException
 
-from app.kaggle_import import load_songs_from_csv, get_min_max_date
+from app.business.data_import import load_songs_from_csv, get_min_max_date
 
 router = APIRouter(
     tags=["data"],

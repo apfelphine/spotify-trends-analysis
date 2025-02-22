@@ -11,16 +11,6 @@ router = APIRouter(
 )
 
 
-@router.get("/track/{track_id}")
-async def get_track_popularity(
-    track_id: str,
-    from_date: Optional[datetime.datetime] = None,
-    to_date: Optional[datetime.datetime] = None,
-) -> dict[str, float]:
-    """Calculate the popularity of a specific track across the world in a specific range"""
-    return calculate_track_popularity(track_id, from_date, to_date)
-
-
 @router.get("/album/{album_id}")
 async def get_album_popularity(
     album_id: str,
@@ -39,3 +29,14 @@ async def get_artist_popularity(
 ) -> dict[str, float]:
     """Calculate the popularity of a specific artist across the world in a specific range"""
     return calculate_artist_popularity(artist_id, from_date, to_date)
+
+
+@router.get("/track/{track_id}")
+async def get_track_popularity(
+    track_id: str,
+    from_date: Optional[datetime.datetime] = None,
+    to_date: Optional[datetime.datetime] = None,
+) -> dict[str, float]:
+    """Calculate the popularity of a specific track across the world in a specific range"""
+    return calculate_track_popularity(track_id, from_date, to_date)
+

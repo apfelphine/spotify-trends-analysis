@@ -63,7 +63,7 @@ async def get_most_popular_track(
 
 
 @router.get("/track/{country_code}")
-async def get_most_popular_track(
+async def get_most_popular_track_in_country(
     country_code: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,

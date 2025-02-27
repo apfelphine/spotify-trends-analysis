@@ -8,7 +8,7 @@ from starlette.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 from asyncio import run
 
-from app.api import root, data_import, trends, popularity
+from app.api import root, data_import, trends, popularity, maps
 from app.database import create_db_and_tables
 from app.business.data_import import import_songs_from_kaggle, import_countries
 from app.models.exceptions import NotFoundException
@@ -32,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(data_import.router)
+app.include_router(maps.router)
 app.include_router(popularity.router)
 app.include_router(root.router)
 app.include_router(trends.router)

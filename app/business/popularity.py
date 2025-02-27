@@ -12,7 +12,7 @@ from app.models.tracks import Track
 from app.models.trends import TrendEntry
 
 
-def calculate_album_popularity(
+async def calculate_album_popularity(
     album_id: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
@@ -22,23 +22,23 @@ def calculate_album_popularity(
         if not album:
             raise NotFoundException(f"There is no album with ID \"{album_id}\".")
         where_filter = or_(*[TrendEntry.track_id == track.id for track in album.tracks])
-        return _calculate_popularity(session, where_filter, from_date, to_date)
+        return await _calculate_popularity(session, where_filter, from_date, to_date)
 
 
-def calculate_artist_popularity(
+async def calculate_artist_popularity(
     artist_id: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-):
+) -> dict[str, float]:
     with (Session(engine) as session):
         artist = session.get(Artist, artist_id)
         if not artist:
             raise NotFoundException(f"There is no artist with ID \"{artist_id}\".")
         where_filter = or_(*[TrendEntry.track_id == track.id for track in artist.tracks])
-        return _calculate_popularity(session, where_filter, from_date, to_date)
+        return await _calculate_popularity(session, where_filter, from_date, to_date)
 
 
-def calculate_track_popularity(
+async def calculate_track_popularity(
     track_id: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
@@ -47,10 +47,10 @@ def calculate_track_popularity(
         if not session.get(Track, track_id):
             raise NotFoundException(f"There is no track with ID \"{track_id}\".")
         where_filter = TrendEntry.track_id == track_id
-        return _calculate_popularity(session, where_filter, from_date, to_date)
+        return await _calculate_popularity(session, where_filter, from_date, to_date)
 
 
-def _calculate_popularity(
+async def _calculate_popularity(
     session: Session,
     where_filter,
     from_date: Optional[datetime.datetime] = None,

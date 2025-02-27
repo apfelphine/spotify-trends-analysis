@@ -278,6 +278,7 @@ async def make_spotify_request(method, path, params, access_token) -> dict | lis
 def import_countries():
     with Session(engine) as session:
         print("Importing country data...")
+        imported_countries = []
         with open('static/world-administrative-boundaries.geojson') as file:
             gj = geojson.load(file)
             for feature in gj['features']:
@@ -287,6 +288,7 @@ def import_countries():
 
                 name = feature['properties']['name']
                 print(alpha_2_code, end='...')
+                imported_countries.append(alpha_2_code)
                 session.add(
                     Country(
                         alpha_2_code=alpha_2_code,
@@ -297,4 +299,6 @@ def import_countries():
                     )
                 )
         session.commit()
-        print("\nFinished importing country data...")
+        if len(imported_countries) > 0:
+            print(f"\nFinished importing {len(imported_countries)} countries...")
+        print("Already imported country data.")

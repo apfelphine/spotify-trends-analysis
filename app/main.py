@@ -10,7 +10,7 @@ from asyncio import run
 
 from app.api import root, data_import, trends, popularity
 from app.database import create_db_and_tables
-from app.business.data_import import import_songs_from_kaggle
+from app.business.data_import import import_songs_from_kaggle, import_countries
 from app.models.exceptions import NotFoundException
 
 app = FastAPI(
@@ -47,6 +47,7 @@ async def unicorn_exception_handler(_: Request, exc: NotFoundException):
 app.mount("", StaticFiles(directory="static", html=True), name="static")
 
 create_db_and_tables()
+import_countries()
 
 scheduler = BackgroundScheduler()
 scheduler.start()

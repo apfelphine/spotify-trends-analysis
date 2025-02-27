@@ -7,7 +7,8 @@ engine = create_engine(
     f"postgresql+psycopg2://{configuration.postgres.user}:{configuration.postgres.password}"
     f"@{configuration.postgres.host}:{configuration.postgres.port}/"
     f"{configuration.postgres.database_name}",
-    echo=False
+    echo=False,
+    plugins=["geoalchemy2"]
 )
 
 

@@ -5,10 +5,13 @@ import re
 import time
 from typing import Callable, Awaitable
 
+import geojson
 import kagglehub
 import pandas as pd
 import requests
+from geoalchemy2.shape import from_shape
 from playwright.async_api import async_playwright
+from shapely.geometry import shape
 from sqlalchemy import func
 
 from sqlmodel import Session, select
@@ -16,6 +19,7 @@ from sqlmodel import Session, select
 from app.database import engine
 from app.models.albums import Album
 from app.models.artists import Artist
+from app.models.countries import Country
 from app.models.tracks import Track
 from app.models.trends import TrendEntry
 
@@ -269,3 +273,28 @@ async def make_spotify_request(method, path, params, access_token) -> dict | lis
             logging.info(f"Retrying...")
     else:
         raise Exception(f"Failed {method} on {path}")
+
+
+def import_countries():
+    with Session(engine) as session:
+        print("Importing country data...")
+        with open('static/world-administrative-boundaries.geojson') as file:
+            gj = geojson.load(file)
+            for feature in gj['features']:
+                alpha_2_code = feature['properties']['iso_3166_1_alpha_2_codes']
+                if not alpha_2_code or session.get(Country, alpha_2_code) is not None:
+                    continue
+
+                name = feature['properties']['name']
+                print(alpha_2_code, end='...')
+                session.add(
+                    Country(
+                        alpha_2_code=alpha_2_code,
+                        name=name,
+                        polygon=from_shape(
+                            shape(feature['geometry'])
+                        )
+                    )
+                )
+        session.commit()
+        print("\nFinished importing country data...")

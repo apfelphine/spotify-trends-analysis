@@ -70,5 +70,5 @@ async def _calculate_popularity(
         trends = list(session.exec(statement).all())
         country_scores[country_code] = sum([51 - t.rank for t in trends])
 
-    max_score = max(country_scores.values())
+    max_score = max(country_scores.values()) or 1
     return {country_code: score / max_score for country_code, score in country_scores.items()}

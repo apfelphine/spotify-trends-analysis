@@ -4,6 +4,7 @@ let availableResourceIds = {}
 let currentStartDate = null
 let currentEndDate = null
 let selectedResourceType = "artist"
+var legend = null
 
 // Background Map
 const map = L.map('map').setView([51.505, -0.09], 2);
@@ -113,12 +114,14 @@ document.addEventListener('DOMContentLoaded', function() {
     )
 });
 
-function getStyle(feature) {
-    const pop = feature.properties.popularity;
-    const shade = Math.round(255 * (1 - pop));
+function getColor(popularity) {
+    const shade = Math.round(255 * (1 - popularity));
+    return `rgb(${shade}, ${shade}, ${shade})`;
+}
 
+function getStyle(feature) {
     return {
-        fillColor: `rgb(${shade}, ${shade}, ${shade})`,
+        fillColor: getColor(feature.properties.popularity),
         color: "#000",
         weight: 1,
         fillOpacity: 0.8
@@ -163,12 +166,30 @@ function updateMap() {
     map._handlers.forEach(function(handler) {
         handler.disable();
     });
-    map.maxZoom = 2;
+    map.removeControl( map.zoomControl );
 
     // Remove old popularity layer
     map.eachLayer(layer => {
         if (layer !== tiles) map.removeLayer(layer);
     });
+    if (legend != null) {
+        map.removeControl(legend)
+    }
+
+    legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend'),
+        grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
+
+        for (var i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + getColor(grades[i])  + '"></i> ' +
+                grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
+        }
+
+        return div;
+    };
 
     // Construct url
     let url = `http://localhost:8080/api/maps/popularity/${selectedResourceType}/${currentSelectedResourceId}`;
@@ -194,7 +215,8 @@ function updateMap() {
             map._handlers.forEach(function(handler) {
                 handler.enable();
             });
-            map.maxZoom = 19;
+            map.addControl( map.zoomControl );
+            legend.addTo(map);
         });
 }
 

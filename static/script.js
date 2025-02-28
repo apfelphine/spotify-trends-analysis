@@ -115,8 +115,16 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function getColor(popularity) {
-    const shade = Math.round(255 * (1 - popularity));
-    return `rgb(${shade}, ${shade}, ${shade})`;
+    // const baseGreen = { r: 29, g: 185, b: 84 }; // Spotify green
+    const baseGreen = { r: 29, g: 150, b: 60 };  // Slightly darker spotify green
+
+    const white = { r: 255, g: 255, b: 255 };
+
+    const r = Math.round(white.r + (baseGreen.r - white.r) * popularity);
+    const g = Math.round(white.g + (baseGreen.g - white.g) * popularity);
+    const b = Math.round(white.b + (baseGreen.b - white.b) * popularity);
+
+    return `rgb(${r}, ${g}, ${b})`;
 }
 
 function getStyle(feature) {

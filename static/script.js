@@ -11,9 +11,10 @@ const map = L.map('map').setView([51.505, -0.09], 2);
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     minZoom: 2,
-    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    noWrap:true
 }).addTo(map);
-
+map.setMaxBounds(  [[-90,-180],   [90,180]]  )
 
 // Utility Functions
 function fetchJSON(url) {

@@ -11,8 +11,8 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
         <!-- Materialize -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.2.1/dist/js/materialize.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.2.1/dist/css/materialize.min.css">
 
         <!-- My own css -->
         <link rel="stylesheet" href="styles.css">
@@ -21,18 +21,20 @@
         <div class="container">
             <h4>Spotify Charts Analysis</h4>
             <div class="input-field">
-                <input type="text" id="artistId" placeholder="Enter Artist ID">
-                <label for="artistId">Artist ID</label>
-            </div>
-            <button id="fetchData" class="btn waves-effect waves-light">Load Data</button>
-
-            <!-- Materialize Preloader -->
-            <div id="loadingIndicator" class="progress">
-                <div class="indeterminate"></div>
+                <input type="text" id="artistInput" class="autocomplete">
+                <label for="artistInput">Enter Artist</label>
             </div>
 
-            <!-- Leaflet Map -->
-            <div id="map"></div>
+
+            <div class="section">
+                <!-- Leaflet Map -->
+                <div id="map"></div>
+
+                <!-- Materialize Preloader -->
+                <div id="loadingIndicator" class="progress" style="display: none; margin-top: 0px">
+                    <div class="indeterminate"></div>
+                </div>
+            </div>
         </div>
 
         <script src="script.js"></script>

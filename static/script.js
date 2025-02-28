@@ -1,9 +1,47 @@
-const map = L.map('map').setView([51.505, -0.09], 1);
+const map = L.map('map').setView([51.505, -0.09], 2);
 
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
+
+function fetchJSON(url) {
+    return fetch(url)
+        .then(response => response.json());
+}
+
+function fetchArtists() {
+    fetchJSON('http://localhost:8080/api/artists')
+        .then(data => {
+            const suggestions = data.map(artist => {
+                return {id: artist.id, text: artist.name, image: artist.image_url};
+            });
+
+            // Initialize Materialize Autocomplete
+            const inputElement = document.getElementById('artistInput');
+            M.Autocomplete.init(inputElement, {
+                data: suggestions,
+                minLength: 3,
+                isMultiSelect: false,
+                onAutocomplete: function (selectedArtists) {
+                    if (selectedArtists.length > 0) {
+                        updateMap(selectedArtists[0]["id"]); // Update map when an artist is selected
+                    }
+                },
+                onSearch: (text, autocomplete) => {
+                    const filteredData = autocomplete.options.data.filter(item => {
+                      return item["text"].toLowerCase().indexOf(text.toLowerCase()) >= 0;
+                    });
+                    autocomplete.setMenuItems(filteredData);
+                }
+            });
+        })
+        .catch(error => console.error("Error loading artists:", error));
+}
+
+ document.addEventListener('DOMContentLoaded', function() {
+    fetchArtists();
+  });
 
 function getStyle(feature) {
     const pop = feature.properties.popularity;
@@ -16,6 +54,7 @@ function getStyle(feature) {
         fillOpacity: 0.8
     };
 }
+
 
 function formatPopularity(popularity) {
     if (Math.floor(popularity * 10000) !== popularity * 10000) {
@@ -38,10 +77,8 @@ function onEachFeature(feature, layer) {
 }
 
 function updateMap(artistId) {
-    const loadButton = document.getElementById('fetchData');
-    loadButton.disabled = true;
-    const artistInput = document.getElementById('artistId');
-    artistInput.disabled = true;
+    const artistSelect = document.getElementById('artistInput');
+    artistSelect.disabled = true;
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
 
@@ -53,8 +90,7 @@ function updateMap(artistId) {
         if (layer !== tiles) map.removeLayer(layer);
     });
 
-    fetch(`http://localhost:8080/api/maps/popularity/artist/${artistId}`)
-        .then(response => response.json())
+    fetchJSON(`http://localhost:8080/api/maps/popularity/artist/${artistId}`)
         .then(data => {
             L.geoJSON(data, {
                 style: getStyle,
@@ -63,8 +99,7 @@ function updateMap(artistId) {
         })
         .catch(error => console.error("Error loading GeoJSON data:", error))
         .finally(() => {
-            loadButton.disabled = false;
-            artistInput.disabled = false;
+            artistSelect.disabled = false;
             loadingIndicator.style.display = 'none';
 
             map._handlers.forEach(function(handler) {
@@ -73,14 +108,4 @@ function updateMap(artistId) {
         });
 }
 
-// Initial data fetch with default artist
-updateMap('4q3ewBCX7sLwd24euuV69X');
 
-document.getElementById('fetchData').addEventListener('click', function() {
-    const artistId = document.getElementById('artistId').value.trim();
-    if (artistId) {
-        updateMap(artistId);
-    } else {
-        alert("Please enter a valid Artist ID");
-    }
-});

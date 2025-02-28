@@ -22,10 +22,13 @@ function fetchJSON(url) {
 }
 
 function fetchResource(resource) {
+    // Reset input
     const inputElement = document.getElementById('artistInput');
     const instance = M.Autocomplete.getInstance(inputElement);
     instance.activeIndex = -1;
     instance.el.value = null;
+    // Stop label from floating
+    document.getElementById('artistInputLabel').classList.remove("active");
 
     fetchJSON(`http://localhost:8080/api/${resource}`)
         .then(data => {
@@ -96,8 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchResource('artists');
 
     const resourceSelector = document.getElementById('resourceInput');
-    const resourceSelectorInstance = M.FormSelect.init(resourceSelector, {});
-
+    M.FormSelect.init(resourceSelector, {});
     resourceSelector.addEventListener(
         'change', function (event) {
             if (this.value === selectedResourceType) {
@@ -152,12 +154,15 @@ function updateMap() {
     datepickers.forEach(datepicker => datepicker.disabled = true);
     const artistSelect = document.getElementById('artistInput');
     artistSelect.disabled = true;
+    const resourceInput = document.getElementById('resourceInput');
+    resourceInput.disabled = true;
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
     map.setView([51.505, -0.09], 2)
     map._handlers.forEach(function(handler) {
         handler.disable();
     });
+    map.maxZoom = 2;
 
     // Remove old popularity layer
     map.eachLayer(layer => {
@@ -181,12 +186,14 @@ function updateMap() {
         .catch(error => console.error("Error loading GeoJSON data:", error))
         .finally(() => {
             artistSelect.disabled = false;
+            resourceInput.disabled = false;
             datepickers.forEach(datepicker => datepicker.disabled = false);
             loadingIndicator.style.display = 'none';
 
             map._handlers.forEach(function(handler) {
                 handler.enable();
             });
+            map.maxZoom = 19;
         });
 }
 

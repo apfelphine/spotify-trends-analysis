@@ -18,7 +18,23 @@
         <link rel="stylesheet" href="styles.css">
     </head>
     <body>
-        <div id="map"></div>
-        <script src="script.js"></script> <!-- Must be imported after the map div -->
+        <div class="container">
+            <h4>Spotify Charts Analysis</h4>
+            <div class="input-field">
+                <input type="text" id="artistId" placeholder="Enter Artist ID">
+                <label for="artistId">Artist ID</label>
+            </div>
+            <button id="fetchData" class="btn waves-effect waves-light">Load Data</button>
+
+            <!-- Materialize Preloader -->
+            <div id="loadingIndicator" class="progress">
+                <div class="indeterminate"></div>
+            </div>
+
+            <!-- Leaflet Map -->
+            <div id="map"></div>
+        </div>
+
+        <script src="script.js"></script>
     </body>
 </html>

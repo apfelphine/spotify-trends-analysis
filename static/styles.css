@@ -1,4 +1,8 @@
-#map { width: 600px; height: 400px; }
+#map {
+    width: 600px;
+    height: 400px;
+    transition: filter 0.3s ease;  /* Smooth grey-out transition */
+}
 
 html, body
 {
@@ -6,9 +10,6 @@ html, body
     margin: 0;
 }
 
-.leaflet-container {
-    height: 400px;
-    width: 600px;
-    max-width: 100%;
-    max-height: 100%;
+#loadingIndicator {
+    display: none;
 }

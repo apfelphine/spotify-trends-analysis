@@ -1,3 +1,9 @@
+// State
+let currentSelectedArtist = null
+let currentStartDate = null
+let currentEndDate = null
+
+// Background Map
 const map = L.map('map').setView([51.505, -0.09], 2);
 
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -5,6 +11,8 @@ const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
 
+
+// Utility Functions
 function fetchJSON(url) {
     return fetch(url)
         .then(response => response.json());
@@ -13,35 +21,55 @@ function fetchJSON(url) {
 function fetchArtists() {
     fetchJSON('http://localhost:8080/api/artists')
         .then(data => {
-            const suggestions = data.map(artist => {
-                return {id: artist.id, text: artist.name, image: artist.image_url};
-            });
+            const artistIds = data.reduce((acc, artist, _) => {
+                acc[artist.name] = artist.id;
+                return acc;
+            }, {});
+            const dict = data.reduce((acc, artist, _) => {
+                acc[artist.name] = artist.image_url;
+                return acc;
+            }, {});
 
             // Initialize Materialize Autocomplete
             const inputElement = document.getElementById('artistInput');
             M.Autocomplete.init(inputElement, {
-                data: suggestions,
+                data: dict,
                 minLength: 3,
-                isMultiSelect: false,
-                onAutocomplete: function (selectedArtists) {
-                    if (selectedArtists.length > 0) {
-                        updateMap(selectedArtists[0]["id"]); // Update map when an artist is selected
+                limit: 10,
+                onAutocomplete: function (selectedArtist) {
+                    if (selectedArtist.trim().length > 0) {
+                        currentSelectedArtist = artistIds[selectedArtist.trim()];
+                        updateMap(currentSelectedArtist); // Update map when an artist is selected
                     }
                 },
-                onSearch: (text, autocomplete) => {
-                    const filteredData = autocomplete.options.data.filter(item => {
-                      return item["text"].toLowerCase().indexOf(text.toLowerCase()) >= 0;
-                    });
-                    autocomplete.setMenuItems(filteredData);
-                }
             });
         })
         .catch(error => console.error("Error loading artists:", error));
 }
 
- document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     fetchArtists();
-  });
+
+    var elems = document.querySelectorAll('.datepicker');
+    M.Datepicker.init(elems, {
+        showClearBtn: true,
+        openByDefault: false,
+        format: 'yyyy-mm-dd'
+    });
+
+    document.getElementById('startDate').addEventListener(
+        'change', function (event) {
+            currentStartDate = event.target.value;
+            updateMap();
+        }
+    );
+    document.getElementById('endDate').addEventListener(
+        'change', function (event) {
+            currentEndDate = event.target.value;
+            updateMap();
+        }
+    );
+});
 
 function getStyle(feature) {
     const pop = feature.properties.popularity;
@@ -71,26 +99,35 @@ function onEachFeature(feature, layer) {
             <strong>${props.name} (${props.alpha_2_code})</strong><br>
             Popularity: ${formatPopularity(props.popularity)}
         `;
-
         layer.bindPopup(popupContent);
     }
 }
 
-function updateMap(artistId) {
+function updateMap() {
+    // Disable inputs
+    const datepickers = document.querySelectorAll('.datepicker');
+    datepickers.forEach(datepicker => datepicker.disabled = true);
     const artistSelect = document.getElementById('artistInput');
     artistSelect.disabled = true;
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
-
     map._handlers.forEach(function(handler) {
         handler.disable();
     });
 
+    // Remove old popularity layer
     map.eachLayer(layer => {
         if (layer !== tiles) map.removeLayer(layer);
     });
 
-    fetchJSON(`http://localhost:8080/api/maps/popularity/artist/${artistId}`)
+    // Construct url
+    let url = `http://localhost:8080/api/maps/popularity/artist/${currentSelectedArtist}`;
+    const params = new URLSearchParams();
+    if (currentStartDate) params.append('from_date', currentStartDate);
+    if (currentEndDate) params.append('to_date', currentEndDate);
+    if (params.toString()) url += '?' + params.toString();
+
+    fetchJSON(url)
         .then(data => {
             L.geoJSON(data, {
                 style: getStyle,
@@ -100,6 +137,7 @@ function updateMap(artistId) {
         .catch(error => console.error("Error loading GeoJSON data:", error))
         .finally(() => {
             artistSelect.disabled = false;
+            datepickers.forEach(datepicker => datepicker.disabled = false);
             loadingIndicator.style.display = 'none';
 
             map._handlers.forEach(function(handler) {

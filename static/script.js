@@ -1,13 +1,16 @@
 // State
-let currentSelectedArtist = null
+let currentSelectedResourceId = null
+let availableResourceIds = {}
 let currentStartDate = null
 let currentEndDate = null
+let selectedResourceType = "artist"
 
 // Background Map
 const map = L.map('map').setView([51.505, -0.09], 2);
 
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
+    minZoom: 2,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
 
@@ -18,57 +21,93 @@ function fetchJSON(url) {
         .then(response => response.json());
 }
 
-function fetchArtists() {
-    fetchJSON('http://localhost:8080/api/artists')
-        .then(data => {
-            const artistIds = data.reduce((acc, artist, _) => {
-                acc[artist.name] = artist.id;
-                return acc;
-            }, {});
-            const dict = data.reduce((acc, artist, _) => {
-                acc[artist.name] = artist.image_url;
-                return acc;
-            }, {});
+function fetchResource(resource) {
+    const inputElement = document.getElementById('artistInput');
+    const instance = M.Autocomplete.getInstance(inputElement);
+    instance.activeIndex = -1;
+    instance.el.value = null;
 
-            // Initialize Materialize Autocomplete
-            const inputElement = document.getElementById('artistInput');
-            M.Autocomplete.init(inputElement, {
-                data: dict,
-                minLength: 3,
-                limit: 10,
-                onAutocomplete: function (selectedArtist) {
-                    if (selectedArtist.trim().length > 0) {
-                        currentSelectedArtist = artistIds[selectedArtist.trim()];
-                        updateMap(currentSelectedArtist); // Update map when an artist is selected
-                    }
-                },
-            });
+    fetchJSON(`http://localhost:8080/api/${resource}`)
+        .then(data => {
+            availableResourceIds = data.reduce((acc, res, _) => {
+                acc[res.name] = res.id;
+                return acc;
+            }, {});
+            const dict = data.reduce((acc, res, _) => {
+                acc[res.name] = res.image_url;
+                return acc;
+            }, {});
+            instance.updateData(dict);
         })
-        .catch(error => console.error("Error loading artists:", error));
+        .catch(error => console.error(`Error loading ${resource}:`, error));
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    fetchArtists();
+    fetchJSON(`http://localhost:8080/api/data/imported-date-range`)
+        .then(data => {
+                var elems = document.querySelectorAll('.datepicker');
+                M.Datepicker.init(elems, {
+                    showClearBtn: true,
+                    openByDefault: false,
+                    minDate: new Date(data["from"]),
+                    maxDate: new Date(data["to"])
+                });
 
-    var elems = document.querySelectorAll('.datepicker');
-    M.Datepicker.init(elems, {
-        showClearBtn: true,
-        openByDefault: false,
-        format: 'yyyy-mm-dd'
+                document.getElementById('startDate').addEventListener(
+                    'change', function (event) {
+                        const val = M.Datepicker.getInstance(this).date.toISOString()
+                        if (currentStartDate === val) {
+                            return
+                        }
+                        currentStartDate = val;
+                        updateMap();
+                    }
+                );
+                document.getElementById('endDate').addEventListener(
+                    'change', function (event) {
+                        const val = M.Datepicker.getInstance(this).date.toISOString()
+                        if (currentEndDate === val) {
+                            return
+                        }
+                        currentEndDate = val;
+                        updateMap();
+                    }
+                );
+            }
+        )
+
+    const inputElement = document.getElementById('artistInput');
+    const autoCompleteInstance = M.Autocomplete.init(inputElement, {
+        data: {},
+        minLength: 3,
+        limit: 10,
+        onAutocomplete: function (selectedResource) {
+            selectedResource = selectedResource.trim()
+            if (selectedResource.length > 0) {
+                selectedResource = availableResourceIds[selectedResource];
+                if (selectedResource === currentSelectedResourceId) {
+                    return
+                }
+                currentSelectedResourceId = selectedResource;
+                updateMap();
+            }
+        },
     });
+    fetchResource('artists');
 
-    document.getElementById('startDate').addEventListener(
+    const resourceSelector = document.getElementById('resourceInput');
+    const resourceSelectorInstance = M.FormSelect.init(resourceSelector, {});
+
+    resourceSelector.addEventListener(
         'change', function (event) {
-            currentStartDate = event.target.value;
-            updateMap();
+            if (this.value === selectedResourceType) {
+                return
+            }
+            selectedResourceType = this.value
+            fetchResource(selectedResourceType + "s")
+            document.getElementById("artistInputLabel").textContent = `Enter ${String(selectedResourceType).charAt(0).toUpperCase() + String(selectedResourceType).slice(1)}`
         }
-    );
-    document.getElementById('endDate').addEventListener(
-        'change', function (event) {
-            currentEndDate = event.target.value;
-            updateMap();
-        }
-    );
+    )
 });
 
 function getStyle(feature) {
@@ -104,6 +143,10 @@ function onEachFeature(feature, layer) {
 }
 
 function updateMap() {
+    if (currentSelectedResourceId === null) {
+        return
+    }
+
     // Disable inputs
     const datepickers = document.querySelectorAll('.datepicker');
     datepickers.forEach(datepicker => datepicker.disabled = true);
@@ -111,6 +154,7 @@ function updateMap() {
     artistSelect.disabled = true;
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
+    map.setView([51.505, -0.09], 2)
     map._handlers.forEach(function(handler) {
         handler.disable();
     });
@@ -121,7 +165,7 @@ function updateMap() {
     });
 
     // Construct url
-    let url = `http://localhost:8080/api/maps/popularity/artist/${currentSelectedArtist}`;
+    let url = `http://localhost:8080/api/maps/popularity/${selectedResourceType}/${currentSelectedResourceId}`;
     const params = new URLSearchParams();
     if (currentStartDate) params.append('from_date', currentStartDate);
     if (currentEndDate) params.append('to_date', currentEndDate);

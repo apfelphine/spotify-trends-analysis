@@ -11,32 +11,39 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
         <!-- Materialize -->
-<!--        <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.2.1/dist/js/materialize.min.js"></script>-->
-<!--        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.2.1/dist/css/materialize.min.css">-->
-<!-- Compiled and minified CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
-    <!-- Compiled and minified JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
         <!-- My own css -->
         <link rel="stylesheet" href="styles.css">
     </head>
     <body>
         <div class="container">
             <h4>Spotify Charts Analysis</h4>
-            <div class="input-field">
-                <input type="text" id="artistInput" class="autocomplete">
-                <label for="artistInput">Enter Artist</label>
-            </div>
-
-            <div class="row">
-                <div class="input-field col s6">
-                    <input type="text" class="datepicker" id="startDate">
-                    <label for="startDate">Start Date</label>
+            <div class="section">
+                <div class="input-field">
+                    <select id="resourceInput">
+                      <option value="artist" selected>Artist</option>
+                      <option value="track">Track</option>
+                      <option value="album">Album</option>
+                    </select>
+                    <label for="resourceInput">Select what you want to analyse</label>
                 </div>
-                <div class="input-field col s6">
-                    <input type="text" class="datepicker" id="endDate">
-                    <label for="endDate">End Date</label>
+
+                <div class="input-field">
+                    <input type="text" id="artistInput" class="autocomplete">
+                    <label for="artistInput" id="artistInputLabel">Enter Artist</label>
+                </div>
+
+                <div class="row">
+                    <div class="input-field col s6">
+                        <input type="text" class="datepicker" id="startDate">
+                        <label for="startDate">Start Date</label>
+                    </div>
+                    <div class="input-field col s6">
+                        <input type="text" class="datepicker" id="endDate">
+                        <label for="endDate">End Date</label>
+                    </div>
                 </div>
             </div>
 
@@ -46,7 +53,7 @@
                 <div id="map"></div>
 
                 <!-- Materialize Preloader -->
-                <div id="loadingIndicator" class="progress" style="display: none; margin-top: 0px">
+                <div id="loadingIndicator" class="progress" style="display: none; margin-top: 0">
                     <div class="indeterminate"></div>
                 </div>
             </div>

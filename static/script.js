@@ -1,102 +1,48 @@
 // State
+let selectedMode = "popularity";
 let currentSelectedResourceId = null
 let availableResourceIds = {}
 let currentStartDate = null
 let currentEndDate = null
 let selectedResourceType = "artist"
-var legend = null
+let legend = null;
 
-// Background Map
-const map = L.map('map').setView([51.505, -0.09], 2);
-
+// Map
+const map = L.map('map').setView([51.505, -0.09], 2).setMaxBounds([[-90, -180], [90, 180]]);
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     minZoom: 2,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    noWrap:true
+    noWrap: true
 }).addTo(map);
-map.setMaxBounds(  [[-90,-180],   [90,180]]  )
 
 // Utility Functions
-function fetchJSON(url) {
+function fetchJSON(url, errorMessage) {
     return fetch(url)
-        .then(response => response.json());
-}
+        .then(response => {
+            if (!response.ok) {
+                const errorMessageElement = document.getElementById('error-message');
+                errorMessageElement.innerText = errorMessage;
 
-function fetchResource(resource) {
-    // Reset input
-    const inputElement = document.getElementById('artistInput');
-    const instance = M.Autocomplete.getInstance(inputElement);
-    instance.activeIndex = -1;
-    instance.el.value = null;
-    currentSelectedResourceId = null;
-    document.getElementById('artistInputLabel').classList.remove("active");
-
-    // Loading indication
-    const loadingIndicator = document.getElementById('selectionLoadingIndicator');
-    loadingIndicator.style.display = 'block';
-
-    // Disable input
-    const artistSelect = document.getElementById('artistInput');
-    artistSelect.disabled = true;
-
-    fetchJSON(`http://localhost:8080/api/${resource}`)
-        .then(data => {
-            availableResourceIds = data.reduce((acc, res, _) => {
-                let name = resource === "artists" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
-                acc[name] = res.id;
-                return acc;
-            }, {});
-            const dict = data.reduce((acc, res, _) => {
-                let name = resource === "artists" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
-                acc[name] = resource === "tracks" ? res.album.image_url : res.image_url;
-                return acc;
-            }, {});
-            instance.updateData(dict);
-        })
-        .catch(error => console.error(`Error loading ${resource}:`, error))
-        .finally(() => {
-            loadingIndicator.style.display = 'none';
-            artistSelect.disabled = false;
+                const errorDetailsElement = document.getElementById('error-details');
+                errorDetailsElement.innerHTML = `Failed to fetch <a href="${url}">${url}</a> \n[Statuscode: ${response.status}]`;
+                errorModalInstance.open()
+                throw new Error(`Failed to fetch ${url}`);
+            }
+            return response.json();
         });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    fetchJSON(`http://localhost:8080/api/data/imported-date-range`)
-        .then(data => {
-                var elems = document.querySelectorAll('.datepicker');
-                M.Datepicker.init(elems, {
-                    showClearBtn: true,
-                    openByDefault: false,
-                    minDate: new Date(data["from"]),
-                    maxDate: new Date(data["to"])
-                });
+// Initialize Materialize
+const resourceSelectorElement = document.getElementById('resourceInput');
+M.FormSelect.init(resourceSelectorElement, {});
 
-                document.getElementById('startDate').addEventListener(
-                    'change', function (event) {
-                        const val = M.Datepicker.getInstance(this).date.toISOString()
-                        if (currentStartDate === val) {
-                            return
-                        }
-                        currentStartDate = val;
-                        updateMap();
-                    }
-                );
-                document.getElementById('endDate').addEventListener(
-                    'change', function (event) {
-                        const val = M.Datepicker.getInstance(this).date.toISOString()
-                        if (currentEndDate === val) {
-                            return
-                        }
-                        currentEndDate = val;
-                        updateMap();
-                    }
-                );
-            }
-        )
+const errorModalInstance = M.Modal.init(document.getElementById('error-modal'), {});
+M.Collapsible.init(document.getElementById('errorDetailCollapsible'), {});
 
-    const inputElement = document.getElementById('artistInput');
-    const autoCompleteInstance = M.Autocomplete.init(inputElement, {
+const autoCompleteInstance = M.Autocomplete.init(
+    document.getElementById('resourceIdInput'),
+    {
         data: {},
         minLength: 3,
         limit: 10,
@@ -111,134 +57,215 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateMap();
             }
         },
-    });
-    fetchResource('artists');
+    }
+);
+let modeSelectionInstance = M.FormSelect.init(document.getElementById('modeSelection'), {});
 
-    const resourceSelector = document.getElementById('resourceInput');
-    M.FormSelect.init(resourceSelector, {});
-    resourceSelector.addEventListener(
-        'change', function (event) {
-            if (this.value === selectedResourceType) {
-                return
-            }
-            selectedResourceType = this.value
-            fetchResource(selectedResourceType + "s")
-            document.getElementById("artistInputLabel").textContent = `Enter ${String(selectedResourceType).charAt(0).toUpperCase() + String(selectedResourceType).slice(1)}`
+// Event Listeners
+resourceSelectorElement.addEventListener(
+    'change', function (event) {
+        if (this.value === selectedResourceType) {
+            return
         }
-    )
-});
+        selectedResourceType = this.value
+        fetchAvailableResources()
+    }
+)
 
-function getColor(popularity) {
-    // const baseGreen = { r: 29, g: 185, b: 84 }; // Spotify green
-    const baseGreen = { r: 29, g: 150, b: 60 };  // Slightly darker spotify green
+function fetchAvailableResources() {
+    // Reset input
+    autoCompleteInstance.activeIndex = -1;
+    autoCompleteInstance.el.value = null;
+    currentSelectedResourceId = null;
+    document.getElementById('resourceIdInputLabel').classList.remove("active");
 
-    const white = { r: 255, g: 255, b: 255 };
+    // Loading indication
+    const loadingIndicator = document.getElementById('selectionLoadingIndicator');
+    loadingIndicator.style.display = 'block';
 
-    const r = Math.round(white.r + (baseGreen.r - white.r) * popularity);
-    const g = Math.round(white.g + (baseGreen.g - white.g) * popularity);
-    const b = Math.round(white.b + (baseGreen.b - white.b) * popularity);
+    // Disable input
+    const resourceIdInput = document.getElementById('resourceIdInput');
+    resourceIdInput.disabled = true;
 
-    return `rgb(${r}, ${g}, ${b})`;
+    // Set correct label
+    document.getElementById("resourceIdInputLabel").textContent = `Enter ${selectedResourceType} to analyse`
+
+    // Update and re-init mode selection
+    document.getElementById("popularityOption").innerText = `Popularity of specific ${selectedResourceType}`
+    document.getElementById("trendsOption").innerText = `Most popular ${selectedResourceType} per country`
+    modeSelectionInstance = M.FormSelect.init(document.getElementById('modeSelection'), {});
+
+    fetchJSON(`http://localhost:8080/api/${selectedResourceType}s`,
+        `Could not load available ${selectedResourceType}s.`)
+        .then(data => {
+            availableResourceIds = data.reduce((acc, res, _) => {
+                let name = selectedResourceType === "artist" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
+                acc[name] = res.id;
+                return acc;
+            }, {});
+            const dict = data.reduce((acc, res, _) => {
+                let name = selectedResourceType === "artist" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
+                acc[name] = selectedResourceType === "track" ? res.album.image_url : res.image_url;
+                return acc;
+            }, {});
+            instance.updateData(dict);
+        })
+        .catch(error => console.error(`Error loading ${resource}:`, error))
+        .finally(() => {
+            loadingIndicator.style.display = 'none';
+            resourceIdInput.disabled = false;
+        });
 }
 
-function getStyle(feature) {
-    return {
-        fillColor: getColor(feature.properties.popularity),
-        color: "#000",
-        weight: 1,
-        fillOpacity: 0.8
+// Initialize datepicker
+fetchJSON(`http://localhost:8080/api/data/imported-date-range`)
+    .then(data => {
+            var elems = document.querySelectorAll('.datepicker');
+            M.Datepicker.init(elems, {
+                showClearBtn: true,
+                openByDefault: false,
+                minDate: new Date(data["from"]),
+                maxDate: new Date(data["to"])
+            });
+
+            document.getElementById('startDate').addEventListener(
+                'change', function (event) {
+                    const val = M.Datepicker.getInstance(this).date.toISOString()
+                    if (currentStartDate === val) {
+                        return
+                    }
+                    currentStartDate = val;
+                    updateMap();
+                }
+            );
+            document.getElementById('endDate').addEventListener(
+                'change', function (event) {
+                    const val = M.Datepicker.getInstance(this).date.toISOString()
+                    if (currentEndDate === val) {
+                        return
+                    }
+                    currentEndDate = val;
+                    updateMap();
+                }
+            );
+        }
+    )
+
+// Initialize available resources
+fetchAvailableResources();
+
+function addPopularityData(data) {
+    function getColor(popularity) {
+        // const baseGreen = { r: 29, g: 185, b: 84 }; // Spotify green
+        const baseGreen = {r: 29, g: 150, b: 60};  // Slightly darker spotify green
+
+        const white = {r: 255, g: 255, b: 255};
+
+        const r = Math.round(white.r + (baseGreen.r - white.r) * popularity);
+        const g = Math.round(white.g + (baseGreen.g - white.g) * popularity);
+        const b = Math.round(white.b + (baseGreen.b - white.b) * popularity);
+
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+
+    L.geoJSON(data, {
+        style: function (feature) {
+            return {
+                fillColor: getColor(feature.properties.popularity),
+                color: "#000",
+                weight: 1,
+                fillOpacity: 0.8
+            }
+        },
+        onEachFeature: function (feature, layer) {
+            let popularity = feature.properties.popularity;
+            if (Math.floor(popularity * 10000) !== popularity * 10000) {
+                popularity = popularity.toFixed(4);
+            } else {
+                popularity = popularity.toString();
+            }
+            const popupContent = `
+                    <strong>${feature.properties.name} (${feature.properties.alpha_2_code})</strong><br>
+                    Popularity: ${popularity}
+                `;
+            layer.bindPopup(popupContent);
+        }
+    }).addTo(map);
+
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend'),
+            grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
+
+        for (var i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + getColor(grades[i]) + '"></i> ' +
+                grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
+        }
+
+        return div;
     };
 }
 
-
-function formatPopularity(popularity) {
-    if (Math.floor(popularity * 10000) !== popularity * 10000) {
-        return popularity.toFixed(4);
-    } else {
-        return popularity.toString();
-    }
-}
-
-function onEachFeature(feature, layer) {
-    if (feature.properties) {
-        const props = feature.properties;
-        const popupContent = `
-            <strong>${props.name} (${props.alpha_2_code})</strong><br>
-            Popularity: ${formatPopularity(props.popularity)}
-        `;
-        layer.bindPopup(popupContent);
-    }
-}
-
 function updateMap() {
-    if (currentSelectedResourceId === null) {
+    if (selectedMode === "popularity" && currentSelectedResourceId === null) {
         return
     }
 
     // Disable inputs
     const datepickers = document.querySelectorAll('.datepicker');
     datepickers.forEach(datepicker => datepicker.disabled = true);
-    const artistSelect = document.getElementById('artistInput');
-    artistSelect.disabled = true;
+    const resourceIdInput = document.getElementById('resourceIdInput');
+    resourceIdInput.disabled = true;
     const resourceInput = document.getElementById('resourceInput');
     resourceInput.disabled = true;
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
-    map.setView([51.505, -0.09], 2)
-    map._handlers.forEach(function(handler) {
+
+    // Reset & disable map
+    map._handlers.forEach(function (handler) {
         handler.disable();
     });
-    map.removeControl( map.zoomControl );
-
-    // Remove old popularity layer
+    map.removeControl(map.zoomControl);
     map.eachLayer(layer => {
         if (layer !== tiles) map.removeLayer(layer);
     });
+    map.setView([51.505, -0.09], 2);
     if (legend != null) {
         map.removeControl(legend)
+        legend = null;
     }
 
-    legend = L.control({position: 'bottomright'});
-
-    legend.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'info legend'),
-        grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
-
-        for (var i = 0; i < grades.length; i++) {
-            div.innerHTML +=
-                '<i style="background:' + getColor(grades[i])  + '"></i> ' +
-                grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
-        }
-
-        return div;
-    };
-
     // Construct url
-    let url = `http://localhost:8080/api/maps/popularity/${selectedResourceType}/${currentSelectedResourceId}`;
+    let url = `http://localhost:8080/api/maps/${selectedMode}/${selectedResourceType}/${currentSelectedResourceId}`;
     const params = new URLSearchParams();
     if (currentStartDate) params.append('from_date', currentStartDate);
     if (currentEndDate) params.append('to_date', currentEndDate);
     if (params.toString()) url += '?' + params.toString();
 
-    fetchJSON(url)
+    fetchJSON(url, "Could not load map.")
         .then(data => {
-            L.geoJSON(data, {
-                style: getStyle,
-                onEachFeature: onEachFeature
-            }).addTo(map);
+            legend = L.control({position: 'bottomright'});
+            if (selectedMode === "popularity") {
+                addPopularityData(data)
+            }
+            legend.addTo(map);
         })
-        .catch(error => console.error("Error loading GeoJSON data:", error))
+        .catch(error => {
+            console.log(error)
+        })
         .finally(() => {
-            artistSelect.disabled = false;
+            // Re-enable inputs
+            resourceIdInput.disabled = false;
             resourceInput.disabled = false;
             datepickers.forEach(datepicker => datepicker.disabled = false);
             loadingIndicator.style.display = 'none';
 
-            map._handlers.forEach(function(handler) {
+            // Enable map
+            map._handlers.forEach(function (handler) {
                 handler.enable();
             });
-            map.addControl( map.zoomControl );
-            legend.addTo(map);
+            map.addControl(map.zoomControl);
         });
 }
 

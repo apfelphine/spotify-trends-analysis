@@ -1,69 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <base target="_top">
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Spotify Charts Analysis</title>
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spotify Charts Analysis</title>
 
-        <!-- Leaflet -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-        <!-- Materialize -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!-- Materialize -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
-        <!-- My own css -->
-        <link rel="stylesheet" href="styles.css">
-    </head>
-    <body>
-        <div class="container">
-            <h4>Spotify Charts Analysis</h4>
-            <div class="section">
-                <div class="input-field">
-                    <select id="resourceInput">
-                      <option value="artist" selected>Artist</option>
-                      <option value="track">Track</option>
-                      <option value="album">Album</option>
-                    </select>
-                    <label for="resourceInput">Select what you want to analyse</label>
-                </div>
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-                <div>
-                    <div class="input-field" style="margin-bottom: 0">
-                        <input type="text" id="artistInput" class="autocomplete">
-                        <label for="artistInput" id="artistInputLabel">Enter Artist</label>
-                    </div>
-                    <div id="selectionLoadingIndicator" class="progress" style="display: none; margin-top: 0">
-                        <div class="indeterminate"></div>
-                    </div>
-                </div>
+    <!-- My own css -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <h4>Spotify Charts Analysis</h4>
+    <div class="section">
 
-                <div class="row">
-                    <div class="input-field col s6">
-                        <input type="text" class="datepicker" id="startDate">
-                        <label for="startDate">Start Date</label>
-                    </div>
-                    <div class="input-field col s6">
-                        <input type="text" class="datepicker" id="endDate">
-                        <label for="endDate">End Date</label>
-                    </div>
-                </div>
+        <div class="input-field">
+            <select id="resourceInput">
+                <option value="artist" selected>Artist</option>
+                <option value="track">Track</option>
+                <option value="album">Album</option>
+            </select>
+            <label for="resourceInput">Select what you want to analyse</label>
+        </div>
+
+        <div class="input-field">
+            <select id="modeSelection">
+                <option value="popularity" id="popularityOption" selected>Popularity of specific artist</option>
+                <option value="trends" id="trendsOption" >Most popular artist per country</option>
+            </select>
+            <label for="modeSelection">Analysis-Mode</label>
+        </div>
+
+        <div>
+            <div class="input-field" style="margin-bottom: 0">
+                <input type="text" id="resourceIdInput" class="autocomplete" style="margin-bottom: 0">
+                <label for="resourceIdInput" id="resourceIdInputLabel"></label>
             </div>
-
-
-            <div class="section">
-                <!-- Leaflet Map -->
-                <div id="map"></div>
-
-                <!-- Materialize Preloader -->
-                <div id="loadingIndicator" class="progress" style="display: none; margin-top: 0">
-                    <div class="indeterminate"></div>
-                </div>
+            <div id="selectionLoadingIndicator" class="progress" style="display: none; margin-top: 0">
+                <div class="indeterminate"></div>
             </div>
         </div>
 
-        <script src="script.js"></script>
-    </body>
+        <div class="row">
+            <div class="input-field col s6">
+                <input type="text" class="datepicker" id="startDate">
+                <label for="startDate">Start Date</label>
+            </div>
+            <div class="input-field col s6">
+                <input type="text" class="datepicker" id="endDate">
+                <label for="endDate">End Date</label>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="section">
+        <!-- Leaflet Map -->
+        <div id="map"></div>
+
+        <!-- Materialize Preloader -->
+        <div id="loadingIndicator" class="progress" style="display: none; margin-top: 0">
+            <div class="indeterminate"></div>
+        </div>
+    </div>
+</div>
+
+<div id="error-modal" class="modal">
+    <div class="modal-content">
+        <h4>An error occurred...</h4>
+        <p>
+            <span id="error-message"></span>
+            Please reload the page and try again.
+            If the problem persists, contact an administrator.
+        </p>
+        <ul class="collapsible" id="errorDetailCollapsible">
+            <li>
+                <div class="collapsible-header"><i class="material-icons">details</i>Details</div>
+                <div class="collapsible-body"><p id="error-details"></p></div>
+            </li>
+        </ul>
+    </div>
+    <div class="modal-footer">
+        <a class="modal-close waves-effect waves-green btn-flat">OK</a>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
 </html>

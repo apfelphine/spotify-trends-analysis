@@ -29,8 +29,16 @@ function fetchResource(resource) {
     const instance = M.Autocomplete.getInstance(inputElement);
     instance.activeIndex = -1;
     instance.el.value = null;
-    // Stop label from floating
+    currentSelectedResourceId = null;
     document.getElementById('artistInputLabel').classList.remove("active");
+
+    // Loading indication
+    const loadingIndicator = document.getElementById('selectionLoadingIndicator');
+    loadingIndicator.style.display = 'block';
+
+    // Disable input
+    const artistSelect = document.getElementById('artistInput');
+    artistSelect.disabled = true;
 
     fetchJSON(`http://localhost:8080/api/${resource}`)
         .then(data => {
@@ -46,7 +54,11 @@ function fetchResource(resource) {
             }, {});
             instance.updateData(dict);
         })
-        .catch(error => console.error(`Error loading ${resource}:`, error));
+        .catch(error => console.error(`Error loading ${resource}:`, error))
+        .finally(() => {
+            loadingIndicator.style.display = 'none';
+            artistSelect.disabled = false;
+        });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

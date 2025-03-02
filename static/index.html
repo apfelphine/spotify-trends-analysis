@@ -30,9 +30,14 @@
                     <label for="resourceInput">Select what you want to analyse</label>
                 </div>
 
-                <div class="input-field">
-                    <input type="text" id="artistInput" class="autocomplete">
-                    <label for="artistInput" id="artistInputLabel">Enter Artist</label>
+                <div>
+                    <div class="input-field" style="margin-bottom: 0">
+                        <input type="text" id="artistInput" class="autocomplete">
+                        <label for="artistInput" id="artistInputLabel">Enter Artist</label>
+                    </div>
+                    <div id="selectionLoadingIndicator" class="progress" style="display: none; margin-top: 0">
+                        <div class="indeterminate"></div>
+                    </div>
                 </div>
 
                 <div class="row">

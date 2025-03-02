@@ -5,9 +5,9 @@ from fastapi import APIRouter
 
 from app.business.trends import get_for_all_countries, get_most_popular_artist_for_country, \
     get_most_popular_track_for_country, get_most_popular_album_for_country
-from app.models.albums import Album
+from app.models.albums import AlbumPublicWithArtists
 from app.models.artists import Artist
-from app.models.tracks import Track
+from app.models.tracks import TrackPublicWithAlbumAndArtists
 
 router = APIRouter(
     tags=["trends"],
@@ -19,7 +19,7 @@ router = APIRouter(
 async def get_most_popular_album(
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> dict[str, Album]:
+) -> dict[str, AlbumPublicWithArtists]:
     """Retrieve the most popular album in all available countries in a specific time range"""
     return get_for_all_countries(get_most_popular_album_for_country, from_date, to_date)
 
@@ -29,7 +29,7 @@ async def get_most_popular_album_in_country(
     country_code: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> Album:
+) -> AlbumPublicWithArtists:
     """Retrieve the most popular album in a specific country in a specific time range"""
     return get_most_popular_album_for_country(country_code, from_date, to_date)
 
@@ -57,7 +57,7 @@ async def get_most_popular_artist_in_country(
 async def get_most_popular_track(
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> dict[str, Track]:
+) -> dict[str, TrackPublicWithAlbumAndArtists]:
     """Retrieve the most popular track in all available countries in a specific time range"""
     return get_for_all_countries(get_most_popular_track_for_country, from_date, to_date)
 
@@ -67,7 +67,7 @@ async def get_most_popular_track_in_country(
     country_code: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> Track:
+) -> TrackPublicWithAlbumAndArtists:
     """Retrieve the most popular track in a specific country in a specific time range"""
     return get_most_popular_track_for_country(country_code, from_date, to_date)
 

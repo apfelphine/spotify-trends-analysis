@@ -5,17 +5,17 @@ from sqlmodel import Session, select
 
 from app.business.countries import get_all_countries
 from app.database import engine
-from app.models.albums import Album
+from app.models.albums import Album, AlbumPublicWithArtists
 from app.models.artists import Artist
-from app.models.tracks import Track
+from app.models.tracks import Track, TrackPublicWithAlbumAndArtists
 from app.models.trends import TrendEntry
 
 
 def get_for_all_countries(
-    func: Callable[[str, Optional[datetime.datetime], Optional[datetime.datetime]], Artist | Track | Album],
+    func: Callable[[str, Optional[datetime.datetime], Optional[datetime.datetime]], Artist | TrackPublicWithAlbumAndArtists | AlbumPublicWithArtists],
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> dict[str, Artist | Track | Album]:
+) -> dict[str, Artist | TrackPublicWithAlbumAndArtists | AlbumPublicWithArtists]:
     res = {}
     for country in get_all_countries(from_date, to_date):
         res[country] = func(country, from_date, to_date)
@@ -26,7 +26,7 @@ def get_most_popular_track_for_country(
     country_code: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> Track:
+) -> TrackPublicWithAlbumAndArtists:
     with Session(engine) as session:
         trends = _get_trend_entries(session, country_code, from_date, to_date)
 
@@ -45,7 +45,7 @@ def get_most_popular_album_for_country(
     country_code: str,
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
-) -> Album:
+) -> AlbumPublicWithArtists:
     with Session(engine) as session:
         trends = _get_trend_entries(session, country_code, from_date, to_date)
 

@@ -1,11 +1,11 @@
 import asyncio
 import datetime
+import json
 import logging
 import re
 import time
 from typing import Callable, Awaitable
 
-import geojson
 import kagglehub
 import pandas as pd
 import requests
@@ -280,7 +280,7 @@ def import_countries():
         print("Importing country data...")
         imported_countries = []
         with open('static/world-administrative-boundaries.geojson') as file:
-            gj = geojson.load(file)
+            gj = json.load(file)
             for feature in gj['features']:
                 alpha_2_code = feature['properties']['iso_3166_1_alpha_2_codes']
                 if not alpha_2_code or session.get(Country, alpha_2_code) is not None:

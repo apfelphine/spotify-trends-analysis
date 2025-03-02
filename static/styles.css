@@ -12,6 +12,7 @@ html, body
 .legend {
     line-height: 18px !important;
     color: #555;
+    max-width: 400px;
 }
 
 .legend i {
@@ -30,7 +31,47 @@ html, body
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
-.info h4 {
-    margin: 0 0 5px;
-    color: #777;
+
+.leaflet-popup-content:has(audio) {
+    min-width: 310px; /* Audio Tag takes 300px and card & popup have some margin */
+}
+
+.leaflet-popup-content {
+    max-width: 310px;
+}
+
+.card-image {
+    max-height: 250px;
+}
+
+.card-image img {
+    max-height: 250px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.leaflet-popup-content > .card {
+    margin: 0;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.card-content {
+    padding: 8px 4px 4px 4px !important;
+}
+
+audio {
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.btn-floating img {
+    width: 40px !important;
+    height: 40px !important;
+    object-fit: contain;
+}
+
+.country-info {
+    border-top: 1px solid rgba(160, 160, 160, 0.2);
+    padding: 4px 3px 2px 3px;
 }

@@ -20,7 +20,6 @@ pandas = "^2.2.3"
 python-multipart = "^0.0.20"
 apscheduler = "^3.11.0"
 playwright = "^1.50.0"
-geojson = "^3.2.0"
 shapely = "^2.0.7"
 
 

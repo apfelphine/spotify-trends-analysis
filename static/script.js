@@ -8,7 +8,7 @@ let selectedResourceType = "artist"
 let legend = null;
 
 // Map
-const map = L.map('map').setView([51.505, -0.09], 2).setMaxBounds([[-90, -180], [90, 180]]);
+const map = L.map('map').setView([51.505, -0.09], 2).setMaxBounds([[-100, -190], [100, 190]]);
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     minZoom: 2,
@@ -59,7 +59,8 @@ const autoCompleteInstance = M.Autocomplete.init(
         },
     }
 );
-let modeSelectionInstance = M.FormSelect.init(document.getElementById('modeSelection'), {});
+const modeSelectionElement = document.getElementById('modeSelection');
+let modeSelectionInstance = M.FormSelect.init(modeSelectionElement, {});
 
 // Event Listeners
 resourceSelectorElement.addEventListener(
@@ -68,16 +69,51 @@ resourceSelectorElement.addEventListener(
             return
         }
         selectedResourceType = this.value
-        fetchAvailableResources()
+
+        // Update and re-init mode selection
+        document.getElementById("popularityOption").innerText = `Popularity of specific ${selectedResourceType}`
+        document.getElementById("trendsOption").innerText = `Most popular ${selectedResourceType} per country`
+        modeSelectionInstance = M.FormSelect.init(modeSelectionElement, {});
+
+        if (selectedMode === "popularity") {
+            fetchAvailableResources()
+        } else {
+            updateMap()
+        }
     }
 )
 
-function fetchAvailableResources() {
-    // Reset input
+modeSelectionElement.addEventListener(
+    'change', function (event) {
+        if (this.value === selectedMode) {
+            return
+        }
+        selectedMode = this.value
+
+        const resourceInputSection =  document.getElementById("resourceInputSection");
+        if (selectedMode === "popularity") {
+            resourceInputSection.style.display = 'block';
+        } else {
+            resourceInputSection.style.display = 'none';
+            resetSelectedResourceId()
+            updateMap()
+        }
+    }
+)
+
+function resetSelectedResourceId() {
     autoCompleteInstance.activeIndex = -1;
     autoCompleteInstance.el.value = null;
     currentSelectedResourceId = null;
     document.getElementById('resourceIdInputLabel').classList.remove("active");
+}
+
+function fetchAvailableResources() {
+    // Reset input
+    resetSelectedResourceId()
+
+    // Set correct label
+    document.getElementById("resourceIdInputLabel").textContent = `Enter ${selectedResourceType} to analyse`
 
     // Loading indication
     const loadingIndicator = document.getElementById('selectionLoadingIndicator');
@@ -86,14 +122,6 @@ function fetchAvailableResources() {
     // Disable input
     const resourceIdInput = document.getElementById('resourceIdInput');
     resourceIdInput.disabled = true;
-
-    // Set correct label
-    document.getElementById("resourceIdInputLabel").textContent = `Enter ${selectedResourceType} to analyse`
-
-    // Update and re-init mode selection
-    document.getElementById("popularityOption").innerText = `Popularity of specific ${selectedResourceType}`
-    document.getElementById("trendsOption").innerText = `Most popular ${selectedResourceType} per country`
-    modeSelectionInstance = M.FormSelect.init(document.getElementById('modeSelection'), {});
 
     fetchJSON(`http://localhost:8080/api/${selectedResourceType}s`,
         `Could not load available ${selectedResourceType}s.`)
@@ -108,9 +136,9 @@ function fetchAvailableResources() {
                 acc[name] = selectedResourceType === "track" ? res.album.image_url : res.image_url;
                 return acc;
             }, {});
-            instance.updateData(dict);
+            autoCompleteInstance.updateData(dict);
         })
-        .catch(error => console.error(`Error loading ${resource}:`, error))
+        .catch(error => console.error(`Error loading ${selectedResourceType}:`, error))
         .finally(() => {
             loadingIndicator.style.display = 'none';
             resourceIdInput.disabled = false;
@@ -197,11 +225,113 @@ function addPopularityData(data) {
         var div = L.DomUtil.create('div', 'info legend'),
             grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
 
+        div.innerHTML = "<b>Legende</b><br>"
         for (var i = 0; i < grades.length; i++) {
             div.innerHTML +=
                 '<i style="background:' + getColor(grades[i]) + '"></i> ' +
                 grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
         }
+
+        return div;
+    };
+}
+
+function capatilize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function addTrendData(data) {
+    const nameCounts = data.features.reduce((acc, feature) => {
+    const name = feature.properties[selectedResourceType].name;
+        acc[name] = (acc[name] || 0) + 1;
+        return acc;
+    }, {});
+    const names = Object.keys(nameCounts).sort((a, b) => nameCounts[b] - nameCounts[a]);
+
+    const paletteName = names.length > 11 ? "mpn65" : "cb-Paired"
+    let paletteDict  = {}
+    var generatedPalette = palette(paletteName, names.length);
+    for (var i = 0; i < names.length; i++) {
+        paletteDict[names[i]] = generatedPalette[i]
+    }
+
+    L.geoJSON(data, {
+        style: function (feature) {
+            return {
+                fillColor: "#" + paletteDict[feature.properties[selectedResourceType].name],
+                color: "#000",
+                weight: 1,
+                fillOpacity: 0.8
+            }
+        },
+        onEachFeature: function (feature, layer) {
+            const res = feature.properties[selectedResourceType]
+            const url = selectedResourceType === "track" ? res.album.image_url : res.image_url
+
+            let details = ""
+            if (selectedResourceType === "track") {
+                let albumType = res.album.album_type !== "album" ? ` (${capatilize(res.album.album_type)})` : ""
+                let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
+                details = `
+                    <b>Album</b>: ${res.album.name}${albumType}<br>
+                    <b>${artistLabel}</b>: ${res.artists.map(item => item.name).join(", ")}<br>
+                    <audio class="center-align" controls>
+                        <source src="${res.preview_url}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                `
+            } else if (selectedResourceType === "album") {
+                let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
+                details = `
+                    <b>Type</b>: ${capatilize(res.album_type)} <br>
+                    <b>Total Tracks</b>: ${res.total_tracks}<br>
+                    <b>${artistLabel}</b>: ${res.artists.map(item => item.name).join(", ")}<br>
+                `
+            } else if (selectedResourceType === "artist") {
+                if (res.genres && res.genres.length > 1) {
+                    details = `
+                    <b>Genres</b>: ${res.genres.join(", ")}<br>
+                `
+                }
+            }
+
+            const popupContent = `
+                <div class="card">
+                <div class="card-image">
+                  <img src="${url}">
+                  <span class="card-title truncate">${res.name}</span>
+                  <a class="btn-floating halfway-fab waves-effect waves-light green" target="_blank" href="${res.spotify_url}">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/1024px-Spotify_icon.svg.png?20220821125323" alt="Spotify Icon" style="width: 30px; height: 30px;">
+                </a>
+
+                </div>
+         
+                <div class="card-content">
+                  <b>Name</b>: ${res.name} <br>
+                  ${details}  
+                
+                  <br>
+                  <divider></divider>
+                  <div class="country-info right-align">
+                    <i>Country: <strong>${feature.properties.name} (${feature.properties.alpha_2_code})</strong></i>
+                  </div>
+                </div>
+              </div>
+                `;
+            layer.bindPopup(popupContent);
+        }
+    }).addTo(map);
+
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend');
+        div.style.overflowY = 'auto';
+        div.style.maxHeight = '200px';
+
+        div.innerHTML = "<b>Legend</b><br>"
+        names.forEach(name => {
+                div.innerHTML += '<i style="background: #' + paletteDict[name] + '"></i> <strong class="truncate">' +
+                name + '</strong>';
+            });
 
         return div;
     };
@@ -237,7 +367,11 @@ function updateMap() {
     }
 
     // Construct url
-    let url = `http://localhost:8080/api/maps/${selectedMode}/${selectedResourceType}/${currentSelectedResourceId}`;
+    let url = `http://localhost:8080/api/maps/${selectedMode}/${selectedResourceType}`;
+    if (currentSelectedResourceId != null) {
+        url += `/${currentSelectedResourceId}`
+    }
+
     const params = new URLSearchParams();
     if (currentStartDate) params.append('from_date', currentStartDate);
     if (currentEndDate) params.append('to_date', currentEndDate);
@@ -245,9 +379,11 @@ function updateMap() {
 
     fetchJSON(url, "Could not load map.")
         .then(data => {
-            legend = L.control({position: 'bottomright'});
+            legend = L.control({position: 'topright'});
             if (selectedMode === "popularity") {
                 addPopularityData(data)
+            } else if (selectedMode === "trends") {
+                addTrendData(data)
             }
             legend.addTo(map);
         })

@@ -1,8 +1,10 @@
-from fastapi import APIRouter
+from typing import List
+
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
-from app.database import engine
-from app.models.tracks import Track
+from app.database import get_async_session
+from app.models.tracks import Track, TrackPublicWithAlbumAndArtists
 
 router = APIRouter(
     tags=["tracks"],
@@ -10,8 +12,7 @@ router = APIRouter(
 )
 
 
-@router.get("")
-async def get_all_tracks() -> list[Track]:
+@router.get("", response_model=List[TrackPublicWithAlbumAndArtists])
+async def get_all_tracks(*, session: Session = Depends(get_async_session)):
     """Retrieve all tracks"""
-    with (Session(engine) as session):
-        return list(session.exec(select(Track)).all())
+    return list(session.exec(select(Track)).unique().all())

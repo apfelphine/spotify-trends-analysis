@@ -35,11 +35,13 @@ function fetchResource(resource) {
     fetchJSON(`http://localhost:8080/api/${resource}`)
         .then(data => {
             availableResourceIds = data.reduce((acc, res, _) => {
-                acc[res.name] = res.id;
+                let name = resource === "artists" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
+                acc[name] = res.id;
                 return acc;
             }, {});
             const dict = data.reduce((acc, res, _) => {
-                acc[res.name] = res.image_url;
+                let name = resource === "artists" ? res.name : res.name + " (" + res.artists.map(item => item.name).join(", ") + ")"
+                acc[name] = resource === "tracks" ? res.album.image_url : res.image_url;
                 return acc;
             }, {});
             instance.updateData(dict);

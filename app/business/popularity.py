@@ -60,7 +60,7 @@ async def _calculate_popularity(
     country_scores = {}
 
     for country_code in all_countries:
-        statement = select(TrendEntry).where(TrendEntry.country_code == country_code).where(
+        statement = select(TrendEntry.rank).where(TrendEntry.country_code == country_code).where(
             where_filter
         )
         if from_date is not None:
@@ -68,7 +68,7 @@ async def _calculate_popularity(
         if to_date is not None:
             statement = statement.where(TrendEntry.date <= to_date)
         trends = list(session.exec(statement).all())
-        country_scores[country_code] = sum([51 - t.rank for t in trends])
+        country_scores[country_code] = sum([51 - t for t in trends])
 
     max_score = max(country_scores.values()) or 1
     return {country_code: score / max_score for country_code, score in country_scores.items()}

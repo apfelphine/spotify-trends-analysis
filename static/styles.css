@@ -38,6 +38,7 @@ html, body
 
 .leaflet-popup-content {
     max-width: 310px;
+    min-width: 225px;
 }
 
 .card-image {

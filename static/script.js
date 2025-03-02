@@ -273,6 +273,7 @@ function addTrendData(data) {
                 let albumType = res.album.album_type !== "album" ? ` (${capatilize(res.album.album_type)})` : ""
                 let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
                 details = `
+                    <b>Title</b>: ${res.name} <br>
                     <b>Album</b>: ${res.album.name}${albumType}<br>
                     <b>${artistLabel}</b>: ${res.artists.map(item => item.name).join(", ")}<br>
                     <audio class="center-align" controls>
@@ -283,13 +284,15 @@ function addTrendData(data) {
             } else if (selectedResourceType === "album") {
                 let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
                 details = `
+                    <b>Name</b>: ${res.name} <br>
                     <b>Type</b>: ${capatilize(res.album_type)} <br>
                     <b>Total Tracks</b>: ${res.total_tracks}<br>
                     <b>${artistLabel}</b>: ${res.artists.map(item => item.name).join(", ")}<br>
                 `
             } else if (selectedResourceType === "artist") {
+                details += `<b>Name</b>: ${res.name} <br>`
                 if (res.genres && res.genres.length > 1) {
-                    details = `
+                    details += `
                     <b>Genres</b>: ${res.genres.join(", ")}<br>
                 `
                 }
@@ -298,16 +301,13 @@ function addTrendData(data) {
             const popupContent = `
                 <div class="card">
                 <div class="card-image">
-                  <img src="${url}">
-                  <span class="card-title truncate">${res.name}</span>
-                  <a class="btn-floating halfway-fab waves-effect waves-light green" target="_blank" href="${res.spotify_url}">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/1024px-Spotify_icon.svg.png?20220821125323" alt="Spotify Icon" style="width: 30px; height: 30px;">
-                </a>
-
+                      <img src="${url}">
+                      <span class="card-title truncate">${res.name}</span>
+                      <a class="btn-floating halfway-fab waves-effect waves-light green" target="_blank" href="${res.spotify_url}">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/1024px-Spotify_icon.svg.png?20220821125323" alt="Spotify Icon" style="width: 30px; height: 30px;">
+                    </a>
                 </div>
-         
                 <div class="card-content">
-                  <b>Name</b>: ${res.name} <br>
                   ${details}  
                 
                   <br>

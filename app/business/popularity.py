@@ -3,7 +3,8 @@ from typing import Optional
 
 from sqlmodel import Session, select, or_
 
-from app.business.countries import get_all_countries
+from sqlalchemy import func
+
 from app.database import engine
 from app.models.albums import Album
 from app.models.artists import Artist
@@ -56,19 +57,19 @@ async def _calculate_popularity(
     from_date: Optional[datetime.datetime] = None,
     to_date: Optional[datetime.datetime] = None,
 ):
-    all_countries = get_all_countries(from_date, to_date)
-    country_scores = {}
+    statement = (
+        select(TrendEntry.country_code,
+               (func.sum(51 - TrendEntry.rank)))
+        .group_by(TrendEntry.country_code)
+    ).where(where_filter)
 
-    for country_code in all_countries:
-        statement = select(TrendEntry.rank).where(TrendEntry.country_code == country_code).where(
-            where_filter
-        )
-        if from_date is not None:
-            statement = statement.where(TrendEntry.date >= from_date)
-        if to_date is not None:
-            statement = statement.where(TrendEntry.date <= to_date)
-        trends = list(session.exec(statement).all())
-        country_scores[country_code] = sum([51 - t for t in trends])
+    if from_date is not None:
+        statement = statement.where(TrendEntry.date >= from_date)
+    if to_date is not None:
+        statement = statement.where(TrendEntry.date <= to_date)
 
-    max_score = max(country_scores.values()) or 1
+    res = list(session.exec(statement).all())
+    country_scores = {country_score[0]: country_score[1] for country_score in res}
+
+    max_score = max(country_scores.values()) if country_scores.keys() else 1
     return {country_code: score / max_score for country_code, score in country_scores.items()}

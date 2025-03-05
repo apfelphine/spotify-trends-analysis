@@ -7,7 +7,7 @@ engine = create_engine(
     f"postgresql+psycopg2://{configuration.postgres.user}:{configuration.postgres.password}"
     f"@{configuration.postgres.host}:{configuration.postgres.port}/"
     f"{configuration.postgres.database_name}",
-    echo=False,
+    echo=True,
     plugins=["geoalchemy2"]
 )
 
@@ -16,6 +16,6 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 
-def get_async_session():
+def session_producer():
     with Session(engine) as session:
         yield session

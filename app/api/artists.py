@@ -1,7 +1,9 @@
-from fastapi import APIRouter
+from typing import List
+
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
-from app.database import engine
+from app.database import session_producer
 from app.models.artists import Artist
 
 router = APIRouter(
@@ -9,9 +11,7 @@ router = APIRouter(
     prefix="/artists"
 )
 
-
-@router.get("")
-async def get_all_artists() -> list[Artist]:
+@router.get("", response_model=List[Artist])
+async def get_all_artists(*, session: Session = Depends(session_producer)):
     """Retrieve all artists"""
-    with (Session(engine) as session):
-        return list(session.exec(select(Artist)).all())
+    return list(session.exec(select(Artist)).unique().all())

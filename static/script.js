@@ -410,7 +410,7 @@ function updateMap() {
     }
     const params = new URLSearchParams();
     if (startDateInstance.date) params.append('from_date', dateToString(startDateInstance.date));
-    if (endDateInstance.date) params.append('to_date', endDateInstance.date);
+    if (endDateInstance.date) params.append('to_date', dateToString(endDateInstance.date));
     if (params.toString()) url += '?' + params.toString();
 
     fetchJSON(url, "Could not load map.")

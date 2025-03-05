@@ -5,6 +5,7 @@ from sqlmodel import Session, select, or_
 
 from sqlalchemy import func
 
+from app.business.utils import add_date_filter
 from app.database import engine
 from app.models.albums import Album
 from app.models.artists import Artist
@@ -63,10 +64,7 @@ async def _calculate_popularity(
         .group_by(TrendEntry.country_code)
     ).where(where_filter)
 
-    if from_date is not None:
-        statement = statement.where(TrendEntry.date >= from_date)
-    if to_date is not None:
-        statement = statement.where(TrendEntry.date <= to_date)
+    statement = add_date_filter(statement, from_date, to_date)
 
     res = list(session.exec(statement).all())
     country_scores = {country_score[0]: country_score[1] for country_score in res}

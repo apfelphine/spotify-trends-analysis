@@ -3,8 +3,9 @@ from typing import Optional
 
 from fastapi import APIRouter
 
-from app.business.trends import get_for_all_countries, get_most_popular_artist_for_country, \
-    get_most_popular_track_for_country, get_most_popular_album_for_country
+from app.business.trends import get_most_popular_artist_for_country, \
+    get_most_popular_track_for_country, get_most_popular_album_for_country, get_most_popular_album_per_country, \
+    get_most_popular_track_per_country, get_most_popular_artist_per_country
 from app.models.albums import AlbumPublicWithArtists
 from app.models.artists import Artist
 from app.models.tracks import TrackPublicWithAlbumAndArtists
@@ -21,7 +22,7 @@ async def get_most_popular_album(
     to_date: Optional[datetime.datetime] = None,
 ) -> dict[str, AlbumPublicWithArtists]:
     """Retrieve the most popular album in all available countries in a specific time range"""
-    return get_for_all_countries(get_most_popular_album_for_country, from_date, to_date)
+    return get_most_popular_album_per_country(from_date, to_date)
 
 
 @router.get("/album/{country_code}")
@@ -40,7 +41,7 @@ async def get_most_popular_artist(
     to_date: Optional[datetime.datetime] = None,
 ) -> dict[str, Artist]:
     """Retrieve the most popular artist in all available countries in a specific time range"""
-    return get_for_all_countries(get_most_popular_artist_for_country, from_date, to_date)
+    return get_most_popular_artist_per_country(from_date, to_date)
 
 
 @router.get("/artist/{country_code}")
@@ -59,7 +60,7 @@ async def get_most_popular_track(
     to_date: Optional[datetime.datetime] = None,
 ) -> dict[str, TrackPublicWithAlbumAndArtists]:
     """Retrieve the most popular track in all available countries in a specific time range"""
-    return get_for_all_countries(get_most_popular_track_for_country, from_date, to_date)
+    return get_most_popular_track_per_country(from_date, to_date)
 
 
 @router.get("/track/{country_code}")

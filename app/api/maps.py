@@ -4,8 +4,8 @@ from typing import Optional
 from fastapi import APIRouter
 from app.business.maps import get_map_with_features
 from app.business.popularity import calculate_artist_popularity, calculate_track_popularity, calculate_album_popularity
-from app.business.trends import get_most_popular_album_for_country, get_for_all_countries, \
-    get_most_popular_track_for_country, get_most_popular_artist_for_country
+from app.business.trends import get_most_popular_track_per_country, \
+    get_most_popular_album_per_country, get_most_popular_artist_per_country
 from app.models.maps import FeatureCollection
 
 router = APIRouter(
@@ -60,7 +60,7 @@ async def get_artist_trend_map(
 ) -> FeatureCollection:
     """Geo geojson with artist trends"""
     return await get_map_with_features(
-        get_for_all_countries(get_most_popular_artist_for_country, from_date, to_date),
+        get_most_popular_artist_per_country(from_date, to_date),
         feature_key="artist"
     )
 
@@ -72,7 +72,7 @@ async def get_track_trend_map(
 ) -> FeatureCollection:
     """Geo geojson with track trends"""
     return await get_map_with_features(
-        get_for_all_countries(get_most_popular_track_for_country, from_date, to_date),
+        get_most_popular_track_per_country(from_date, to_date),
         feature_key="track"
     )
 
@@ -84,6 +84,6 @@ async def get_album_trend_map(
 ) -> FeatureCollection:
     """Geo geojson with album trends"""
     return await get_map_with_features(
-        get_for_all_countries(get_most_popular_album_for_country, from_date, to_date),
+        get_most_popular_album_per_country(from_date, to_date),
         feature_key="album"
     )

@@ -36,7 +36,7 @@ html, body
     min-width: 310px; /* Audio Tag takes 300px and card & popup have some margin */
 }
 
-.leaflet-popup-content {
+.leaflet-popup-content:has(.card) {
     max-width: 310px;
     min-width: 225px;
 }

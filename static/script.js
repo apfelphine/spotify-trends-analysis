@@ -2,13 +2,13 @@
 let selectedMode = "popularity";
 let currentSelectedResourceId = null
 let availableResourceIds = {}
-let currentStartDate = null
-let currentEndDate = null
 let selectedResourceType = "artist"
 let legend = null;
+let minDate = null;
+let maxDate = null;
 
 // Map
-const map = L.map('map').setView([51.505, -0.09], 2).setMaxBounds([[-100, -190], [100, 190]]);
+const map = L.map('map').setView([51.505, -0.09], 2);
 const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     minZoom: 2,
@@ -16,53 +16,44 @@ const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     noWrap: true
 }).addTo(map);
 
-// Utility Functions
-function fetchJSON(url, errorMessage) {
-    return fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                const errorMessageElement = document.getElementById('error-message');
-                errorMessageElement.innerText = errorMessage;
-
-                const errorDetailsElement = document.getElementById('error-details');
-                errorDetailsElement.innerHTML = `Failed to fetch <a href="${url}">${url}</a> \n[Statuscode: ${response.status}]`;
-                errorModalInstance.open()
-                throw new Error(`Failed to fetch ${url}`);
-            }
-            return response.json();
-        });
-}
+// HTML Elements
+const resourceSelectorElement = document.getElementById('resourceInput');
+const modeSelectionElement = document.getElementById('modeSelection');
+const updateDataButtonElement = document.getElementById('updateData');
 
 // Initialize Materialize
-const resourceSelectorElement = document.getElementById('resourceInput');
-M.FormSelect.init(resourceSelectorElement, {});
-
-const errorModalInstance = M.Modal.init(document.getElementById('error-modal'), {});
 M.Collapsible.init(document.getElementById('errorDetailCollapsible'), {});
-
-const autoCompleteInstance = M.Autocomplete.init(
-    document.getElementById('resourceIdInput'),
-    {
-        data: {},
-        minLength: 3,
-        limit: 10,
-        onAutocomplete: function (selectedResource) {
-            selectedResource = selectedResource.trim()
-            if (selectedResource.length > 0) {
-                selectedResource = availableResourceIds[selectedResource];
-                if (selectedResource === currentSelectedResourceId) {
-                    return
-                }
-                currentSelectedResourceId = selectedResource;
-                updateMap();
-            }
-        },
-    }
-);
-const modeSelectionElement = document.getElementById('modeSelection');
+M.FormSelect.init(resourceSelectorElement, {});
+M.FormSelect.init(resourceSelectorElement, {});
 let modeSelectionInstance = M.FormSelect.init(modeSelectionElement, {});
+const errorModalInstance = M.Modal.init(document.getElementById('error-modal'), {});
+
+const startDateInstance =  M.Datepicker.init(document.getElementById('startDate'), {
+    autoClose: true,
+    showClearBtn: true,
+    openByDefault: false,
+    onClose: onUpdateStartDate
+})
+const endDateInstance = M.Datepicker.init(document.getElementById('endDate'), {
+    autoClose: true,
+    showClearBtn: true,
+    openByDefault: false,
+    onClose: onUpdateEndDate
+})
+const autoCompleteInstance = M.Autocomplete.init(document.getElementById('resourceIdInput'), {
+    data: {},
+    minLength: 3,
+    limit: 10,
+    onAutocomplete: onAutocompleteResourceId,
+});
 
 // Event Listeners
+updateDataButtonElement.addEventListener(
+    'click', function (event) {
+        updateMap();
+    }
+)
+
 resourceSelectorElement.addEventListener(
     'change', function (event) {
         if (this.value === selectedResourceType) {
@@ -77,9 +68,8 @@ resourceSelectorElement.addEventListener(
 
         if (selectedMode === "popularity") {
             fetchAvailableResources()
-        } else {
-            updateMap()
         }
+        updateButtonEnabled()
     }
 )
 
@@ -92,14 +82,100 @@ modeSelectionElement.addEventListener(
 
         const resourceInputSection =  document.getElementById("resourceInputSection");
         if (selectedMode === "popularity") {
+            fetchAvailableResources()
             resourceInputSection.style.display = 'block';
         } else {
             resourceInputSection.style.display = 'none';
             resetSelectedResourceId()
-            updateMap()
         }
+        updateButtonEnabled()
     }
 )
+
+// Initialize datepicker
+fetchJSON(`http://localhost:8080/api/data/imported-date-range`)
+    .then(data => {
+        minDate = new Date(data["from"])
+        maxDate = new Date(data["to"])
+        startDateInstance.options["minDate"] = minDate
+        startDateInstance.options["maxDate"] = maxDate
+        endDateInstance.options["minDate"] = minDate
+        endDateInstance.options["maxDate"] = maxDate
+    })
+
+// Initialize available resources
+fetchAvailableResources();
+
+// Utility
+function onUpdateStartDate() {
+    endDateInstance.options["minDate"] = startDateInstance.date ? startDateInstance.date : minDate
+}
+function onUpdateEndDate() {
+    startDateInstance.options["maxDate"] = endDateInstance.date ? endDateInstance.date : maxDate
+}
+
+function onAutocompleteResourceId(selectedResource) {
+    selectedResource = selectedResource.trim()
+    if (selectedResource.length > 0) {
+        selectedResource = availableResourceIds[selectedResource];
+        if (selectedResource === currentSelectedResourceId) {
+            return
+        }
+        currentSelectedResourceId = selectedResource;
+    }
+
+    updateButtonEnabled()
+}
+
+function fetchJSON(url, errorMessage) {
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                const errorMessageElement = document.getElementById('error-message');
+                errorMessageElement.innerText = errorMessage;
+                const errorDetailsElement = document.getElementById('error-details');
+                errorDetailsElement.innerHTML = `Failed to fetch <a href="${url}">${url}</a> \n[Statuscode: ${response.status}]`;
+                errorModalInstance.open()
+                throw new Error(`Failed to fetch ${url}`);
+            }
+            return response.json();
+        });
+}
+
+function disableAllInputs() {
+    document.getElementById("input-panel")
+        .querySelectorAll("button, input, select")
+        .forEach(el => {
+            el.disabled = true;
+        });
+}
+
+function enableAllInputs() {
+    document.getElementById("input-panel")
+        .querySelectorAll("button, input, select")
+        .forEach(el => {
+            el.disabled = el !== updateDataButtonElement ? false : !canFetchData();
+        });
+}
+
+function updateButtonEnabled() {
+    updateDataButtonElement.disabled = !canFetchData();
+}
+
+function canFetchData() {
+    return selectedMode === "trends" || currentSelectedResourceId !== null
+}
+
+function dateToString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
+}
 
 function resetSelectedResourceId() {
     autoCompleteInstance.activeIndex = -1;
@@ -119,9 +195,8 @@ function fetchAvailableResources() {
     const loadingIndicator = document.getElementById('selectionLoadingIndicator');
     loadingIndicator.style.display = 'block';
 
-    // Disable input
-    const resourceIdInput = document.getElementById('resourceIdInput');
-    resourceIdInput.disabled = true;
+    // Disable inputs
+    disableAllInputs()
 
     fetchJSON(`http://localhost:8080/api/${selectedResourceType}s`,
         `Could not load available ${selectedResourceType}s.`)
@@ -137,50 +212,15 @@ function fetchAvailableResources() {
                 return acc;
             }, {});
             autoCompleteInstance.updateData(dict);
+
         })
         .catch(error => console.error(`Error loading ${selectedResourceType}:`, error))
         .finally(() => {
             loadingIndicator.style.display = 'none';
-            resourceIdInput.disabled = false;
+            enableAllInputs();
+            updateButtonEnabled();
         });
 }
-
-// Initialize datepicker
-fetchJSON(`http://localhost:8080/api/data/imported-date-range`)
-    .then(data => {
-            var elems = document.querySelectorAll('.datepicker');
-            M.Datepicker.init(elems, {
-                showClearBtn: true,
-                openByDefault: false,
-                minDate: new Date(data["from"]),
-                maxDate: new Date(data["to"])
-            });
-
-            document.getElementById('startDate').addEventListener(
-                'change', function (event) {
-                    const val = M.Datepicker.getInstance(this).date.toISOString()
-                    if (currentStartDate === val) {
-                        return
-                    }
-                    currentStartDate = val;
-                    updateMap();
-                }
-            );
-            document.getElementById('endDate').addEventListener(
-                'change', function (event) {
-                    const val = M.Datepicker.getInstance(this).date.toISOString()
-                    if (currentEndDate === val) {
-                        return
-                    }
-                    currentEndDate = val;
-                    updateMap();
-                }
-            );
-        }
-    )
-
-// Initialize available resources
-fetchAvailableResources();
 
 function addPopularityData(data) {
     function getColor(popularity) {
@@ -225,7 +265,7 @@ function addPopularityData(data) {
         var div = L.DomUtil.create('div', 'info legend'),
             grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
 
-        div.innerHTML = "<b>Legende</b><br>"
+        div.innerHTML = "<b>Legend</b><br>"
         for (var i = 0; i < grades.length; i++) {
             div.innerHTML +=
                 '<i style="background:' + getColor(grades[i]) + '"></i> ' +
@@ -236,7 +276,7 @@ function addPopularityData(data) {
     };
 }
 
-function capatilize(str) {
+function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
@@ -270,7 +310,7 @@ function addTrendData(data) {
 
             let details = ""
             if (selectedResourceType === "track") {
-                let albumType = res.album.album_type !== "album" ? ` (${capatilize(res.album.album_type)})` : ""
+                let albumType = res.album.album_type !== "album" ? ` (${capitalize(res.album.album_type)})` : ""
                 let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
                 details = `
                     <b>Title</b>: ${res.name} <br>
@@ -285,7 +325,7 @@ function addTrendData(data) {
                 let artistLabel = res.artists.length > 1 ? "Artists" : "Artist";
                 details = `
                     <b>Name</b>: ${res.name} <br>
-                    <b>Type</b>: ${capatilize(res.album_type)} <br>
+                    <b>Type</b>: ${capitalize(res.album_type)} <br>
                     <b>Total Tracks</b>: ${res.total_tracks}<br>
                     <b>${artistLabel}</b>: ${res.artists.map(item => item.name).join(", ")}<br>
                 `
@@ -338,17 +378,14 @@ function addTrendData(data) {
 }
 
 function updateMap() {
-    if (selectedMode === "popularity" && currentSelectedResourceId === null) {
+    if (!canFetchData()) {
         return
     }
 
     // Disable inputs
-    const datepickers = document.querySelectorAll('.datepicker');
-    datepickers.forEach(datepicker => datepicker.disabled = true);
-    const resourceIdInput = document.getElementById('resourceIdInput');
-    resourceIdInput.disabled = true;
-    const resourceInput = document.getElementById('resourceInput');
-    resourceInput.disabled = true;
+    disableAllInputs()
+
+    // Loading indication on map
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
 
@@ -371,10 +408,9 @@ function updateMap() {
     if (currentSelectedResourceId != null) {
         url += `/${currentSelectedResourceId}`
     }
-
     const params = new URLSearchParams();
-    if (currentStartDate) params.append('from_date', currentStartDate);
-    if (currentEndDate) params.append('to_date', currentEndDate);
+    if (startDateInstance.date) params.append('from_date', dateToString(startDateInstance.date));
+    if (endDateInstance.date) params.append('to_date', endDateInstance.date);
     if (params.toString()) url += '?' + params.toString();
 
     fetchJSON(url, "Could not load map.")
@@ -392,9 +428,8 @@ function updateMap() {
         })
         .finally(() => {
             // Re-enable inputs
-            resourceIdInput.disabled = false;
-            resourceInput.disabled = false;
-            datepickers.forEach(datepicker => datepicker.disabled = false);
+            enableAllInputs()
+
             loadingIndicator.style.display = 'none';
 
             // Enable map

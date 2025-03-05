@@ -28,8 +28,7 @@
 <body>
 <div class="container">
     <h4>Spotify Charts Analysis</h4>
-    <div class="section">
-
+    <div class="section" id="input-panel">
         <div class="input-field">
             <select id="resourceInput">
                 <option value="artist" selected>Artist</option>
@@ -48,16 +47,17 @@
         </div>
 
         <div id="resourceInputSection">
-            <div class="input-field" style="margin-bottom: 0">
-                <input type="text" id="resourceIdInput" class="autocomplete" style="margin-bottom: 0">
+            <div class="input-field">
+                <input type="text" id="resourceIdInput" class="autocomplete">
                 <label for="resourceIdInput" id="resourceIdInputLabel"></label>
             </div>
-            <div id="selectionLoadingIndicator" class="progress" style="display: none; margin-top: 0">
+            <div id="selectionLoadingIndicator" class="progress"
+                 style="display: none; margin-top: -24px; margin-bottom: 20px">
                 <div class="indeterminate"></div>
             </div>
         </div>
 
-        <div class="row">
+        <div class="row" style="margin-top: -5px">
             <div class="input-field col s6">
                 <input type="text" class="datepicker" id="startDate">
                 <label for="startDate">Start Date</label>
@@ -67,6 +67,10 @@
                 <label for="endDate">End Date</label>
             </div>
         </div>
+
+         <button class="btn waves-effect waves-light" id="updateData">Submit
+            <i class="material-icons right">send</i>
+          </button>
     </div>
 
 

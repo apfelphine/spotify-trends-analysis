@@ -97,7 +97,6 @@ async def load_dataframe(df: pd.DataFrame):
 
 async def get_access_token() -> str:
     # Copied from: https://www.kaggle.com/code/asaniczka/top-spotify-playlist-extractor/notebook
-    logging.info("Getting an access token for the spotify api")
     url = "https://open.spotify.com/playlist/37i9dQZEVXbNG2KDcFcKOF"
 
     async with async_playwright() as pw:

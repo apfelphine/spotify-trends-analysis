@@ -17,6 +17,8 @@ in the dataset.
 - PostGIS database
 - Leaflet Frontend
 
+![Architecture](documentation/architecture.png)
+
 ## Setup Instructions
 
 In the following the setup of the application is described. 
@@ -67,17 +69,12 @@ Stop the software stack:
 docker compose down
 ````
 
-To delete / reset the database add option `-v`:
-````bash
-docker compose down -v
-````
-
 
 ### Available services
 | Service     | URL                                                              | Credentials                   |
 |-------------|------------------------------------------------------------------|-------------------------------|
 | Application | [http://localhost:8080](http://localhost:8080)                   | Non required                  |
-| API         | [http://localhost:8080/api/docs](http://localhost:8888/api/docs) | Non required                  |
+| API         | [http://localhost:8080/api/docs](http://localhost:8080/api/docs) | Non required                  |
 | PostGIS     | [http://localhost:5432](http://localhost:5432)                   | postgres:postgres             |
 | pgAdmin     | [http://localhost:8888](http://localhost:8888)                   | postgres@postgres.de:postgres |
 
@@ -88,6 +85,8 @@ Login to pgAdmin, add a server and use the following settings:
 - **Credentials**: See above (postgres:postgres)
 
 ### Troubleshooting
+There are some known issues with starting the application that occurred during development.
+In the following the solutions for these issues are listed. 
 
 #### Database not available
 
@@ -98,3 +97,8 @@ The error that indicates this issue is:
 ````
 sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) could not translate host name "db" to address: Name or service not known
 ````
+
+#### Fresh database not initialising
+
+When using a completely fresh database (empty or no `data` folder), the database may 
+fail to start initially. Just restart it until it works.

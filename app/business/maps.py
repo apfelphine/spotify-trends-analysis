@@ -15,8 +15,8 @@ from app.models.tracks import TrackPublicWithAlbumAndArtists
 async def get_map_with_features(country_feature_dict: dict[str, float | Artist | TrackPublicWithAlbumAndArtists | AlbumPublicWithArtists], feature_key: str) -> FeatureCollection:
     try:
         with (Session(engine) as session):
-            where_filter = or_(*[Country.alpha_2_code == country for country in country_feature_dict.keys()])
-            countries = session.exec(select(func.ST_AsGeoJSON(Country)).where(where_filter)).all()
+            statement = select(func.ST_AsGeoJSON(Country)).where(or_(False, *[Country.alpha_2_code == country for country in country_feature_dict.keys()]))
+            countries = session.exec(statement).all()
             loaded_countries = []
             for c in countries:
                 loaded_country = json.loads(c[0])
@@ -27,3 +27,5 @@ async def get_map_with_features(country_feature_dict: dict[str, float | Artist |
             return FeatureCollection(features=loaded_countries)
     except Exception as e:
         print(str(e)[100:])
+        raise e
+

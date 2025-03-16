@@ -35,6 +35,6 @@ async def import_file(file: UploadFile) -> str:
 
 
 @router.get("/imported-date-range")
-async def get_imported_date_range() -> dict:
+def get_imported_date_range() -> dict:
     """Retrieve the date range in the currently imported spotify trend data"""
-    return await get_min_max_date()
+    return get_min_max_date()

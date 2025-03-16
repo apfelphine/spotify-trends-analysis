@@ -29,7 +29,7 @@ async def import_songs_from_kaggle():
     await load_songs_from_csv(path + '/universal_top_spotify_songs.csv')
 
 
-async def get_min_max_date():
+def get_min_max_date():
     with Session(engine) as session:
         from_date = session.exec(select(func.min(TrendEntry.date))).first()
         to_date = session.exec(select(func.max(TrendEntry.date))).first()
@@ -45,7 +45,7 @@ async def load_songs_from_csv(path: str):
     df.dropna(subset=['country'], inplace=True)
 
     # Delta-load
-    max_date = (await get_min_max_date()).get("to", None)
+    max_date = get_min_max_date().get("to", None)
     if max_date is not None:
         df = df.loc[(df['snapshot_date'] > max_date)]
 

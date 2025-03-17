@@ -24,7 +24,6 @@ const updateDataButtonElement = document.getElementById('updateData');
 // Initialize Materialize
 M.Collapsible.init(document.getElementById('errorDetailCollapsible'), {});
 M.FormSelect.init(resourceSelectorElement, {});
-M.FormSelect.init(resourceSelectorElement, {});
 let modeSelectionInstance = M.FormSelect.init(modeSelectionElement, {});
 const errorModalInstance = M.Modal.init(document.getElementById('error-modal'), {});
 
@@ -263,14 +262,32 @@ function addPopularityData(data) {
 
     legend.onAdd = function (map) {
         var div = L.DomUtil.create('div', 'info legend'),
-            grades = [0, 0.05, 0.1, 0.2, 0.5, 0.75, 1];
+            grades = [0, 0.25, 0.5, 0.75, 1];
 
-        div.innerHTML = "<b>Legend</b><br>"
+        div.innerHTML = `
+            <div class="legend-title"><b>Relative Popularity Of "${autoCompleteInstance.el.value}"</b></div>
+        `
         for (var i = 0; i < grades.length; i++) {
-            div.innerHTML +=
-                '<i style="background:' + getColor(grades[i]) + '"></i> ' +
-                grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
+            div.innerHTML += '<i class="color" style="background:' + getColor(grades[i]) + '"></i> ' + grades[i];
+
+            if (i === grades.length -1) {
+                div.innerHTML += " (most popular)"
+              } else {
+                div.innerHTML += ' &ndash; ' + grades[i + 1]
+
+                if (i === 0) {
+                    div.innerHTML += " (least popular)"
+                }
+            }
+
+
+            div.innerHTML += "<br>"
         }
+
+        div.innerHTML += "<div style='margin-top: 5px'><i>" +
+            "The values are scaled so that the country with the highest " +
+            "total ranking receives a value of 1." +
+            "</i></div>"
 
         return div;
     };
@@ -367,9 +384,9 @@ function addTrendData(data) {
         div.style.overflowY = 'auto';
         div.style.maxHeight = '200px';
 
-        div.innerHTML = "<b>Legend</b><br>"
+        div.innerHTML = `<div class="legend-title"><b>Most Popular ${capitalize(selectedResourceType)}</b></div>`
         names.forEach(name => {
-                div.innerHTML += '<i style="background: #' + paletteDict[name] + '"></i> <strong class="truncate">' +
+                div.innerHTML += '<i class="color" style="background: #' + paletteDict[name] + '"></i> <strong class="truncate">' +
                 name + '</strong>';
             });
 
@@ -429,6 +446,9 @@ function updateMap() {
         .finally(() => {
             // Re-enable inputs
             enableAllInputs()
+
+            // Disable Button (will be re-enabled on data-change)
+            updateDataButtonElement.disabled = true
 
             loadingIndicator.style.display = 'none';
 
